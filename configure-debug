@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+./configure \
+    CFLAGS="-Og -g -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fstack-protector-all" \
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
