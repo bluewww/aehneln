@@ -9,7 +9,6 @@
 /missing
 /autom4te.cache/
 /amaehneln-1.0.tar.gz
-*.o
 /config.h
 /config.log
 /aehneln
@@ -17,3 +16,6 @@
 /stamp-h1
 /Makefile
 /TAGS
+*.o
+*.dump
+*.riscv
