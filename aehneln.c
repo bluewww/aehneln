@@ -175,7 +175,7 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 	}
 	if (addr == MEM_TOHOST) {
 		fprintf(stderr, "tohost: exit with %ld\n", data);
-		exit(EXIT_FAILURE);
+		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 8);
@@ -196,7 +196,7 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 
 	if (addr == MEM_TOHOST) {
 		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(EXIT_FAILURE);
+		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 4);
@@ -217,7 +217,7 @@ mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t da
 
 	if (addr == MEM_TOHOST) {
 		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(EXIT_FAILURE);
+		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 2);
@@ -238,7 +238,7 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 
 	if (addr == MEM_TOHOST) {
 		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(EXIT_FAILURE);
+		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 1);
@@ -276,7 +276,7 @@ printf_machine_state(struct sim_ctx *sim)
 	(void)mem;                                                                        \
 	fprintf(stderr, "%s(): unimplemented insn=0x%08" PRIx32 " pc=0x%016" PRIx64 "\n", \
 	    __func__, sim->insn, sim->pc);                                                \
-	exit(1);
+	exit(EXIT_FAILURE);
 
 #define FIELD(NAME) INSN_FIELD(NAME, sim->insn)
 #define GET_REG(NAME) (NAME ? sim->regs[NAME] : 0)
