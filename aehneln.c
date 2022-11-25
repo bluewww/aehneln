@@ -1197,7 +1197,18 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 #undef DECLARE_INSN
 		/* update pc */
 		if (sim->is_exception) {
+			int mie = CSR_FIELD_READ(sim->mstatus, MSTATUS_MIE);
+			/* save previous int state */
+			sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPIE, mie);
+			/* disable interrupts */
+			sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MIE, 0);
+			/* save previous priv state */
+			sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPP, sim->priv);
+			/* go to machine mode */
+			sim->priv = PRV_M;
+			sim->mepc = sim->pc;
 			sim->is_exception = false;
+
 			if ((sim->trace & AEHNELN_TRACE_ILLEGAL) &&
 			    sim->mcause == CAUSE_ILLEGAL_INSTRUCTION) {
 				fprintf(stderr,
