@@ -94,13 +94,37 @@ mem_ctx_copy_elf(struct mem_ctx *mem, char *elf, uint64_t base, uint64_t size)
 	return 0;
 }
 
+uint32_t
+mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
+{
+	/* TODO: I/O devices */
+	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_FETCH_ACCESS;
+		return 0xdeadbeef;
+	}
+	uint32_t data;
+	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 4);
+
+	/* if (sim->trace & AEHNELN_TRACE_MEM) */
+	/* 	fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%08" PRIx32 "\n", __func__, addr, data);
+	 */
+
+	return data;
+}
+
 uint64_t
 mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_LOAD_ACCESS;
+		return 0xdeadbeef;
 	}
 
 	uint64_t data;
@@ -117,15 +141,17 @@ mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_LOAD_ACCESS;
+		return 0xdeadbeef;
 	}
 	uint32_t data;
 	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 4);
 
-	/* if (sim->trace & AEHNELN_TRACE_MEM) */
-	/* 	fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%08" PRIx32 "\n", __func__, addr, data);
-	 */
+	if (sim->trace & AEHNELN_TRACE_MEM)
+		fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%08" PRIx32 "\n", __func__, addr, data);
 
 	return data;
 }
@@ -135,8 +161,11 @@ mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_LOAD_ACCESS;
+		return 0xbeef;
 	}
 	uint16_t data;
 	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 2);
@@ -152,8 +181,11 @@ mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_LOAD_ACCESS;
+		return 0xff;
 	}
 	uint8_t data;
 	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 1);
@@ -169,9 +201,12 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n", addr,
-		    data);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n",
+			    addr, data);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_STORE_ACCESS;
+		return;
 	}
 	if (addr == MEM_TOHOST) {
 		fprintf(stderr, "tohost: exit with %ld\n", data);
@@ -189,9 +224,12 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%08" PRIx32 "\n", addr,
-		    data);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%08" PRIx32 "\n",
+			    addr, data);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_STORE_ACCESS;
+		return;
 	}
 
 	if (addr == MEM_TOHOST) {
@@ -210,9 +248,12 @@ mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t da
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%04" PRIx16 "\n", addr,
-		    data);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%04" PRIx16 "\n",
+			    addr, data);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_STORE_ACCESS;
+		return;
 	}
 
 	if (addr == MEM_TOHOST) {
@@ -231,9 +272,12 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 {
 	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%02" PRIx8 "\n", addr,
-		    data);
-		exit(EXIT_FAILURE);
+		if (sim->trace & AEHNELN_TRACE_MEM)
+			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%02" PRIx8 "\n",
+			    addr, data);
+		sim->is_exception = true;
+		sim->mcause = CAUSE_STORE_ACCESS;
+		return;
 	}
 
 	if (addr == MEM_TOHOST) {
@@ -780,7 +824,6 @@ sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	/* transition to machine mode */
-	sim->mepc = sim->pc;
 	sim->is_exception = true;
 	if (sim->priv == PRV_M)
 		sim->mcause = CAUSE_MACHINE_ECALL;
@@ -789,7 +832,8 @@ sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
 	else if (sim->priv == PRV_U)
 		sim->mcause = CAUSE_USER_ECALL;
 
-	sim->priv = PRV_M;
+	/* sim->mepc = sim->pc; */
+	/* sim->priv = PRV_M; */
 }
 
 void
@@ -869,31 +913,42 @@ sim_jalr(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	REG(FIELD(RD)) = sim->pc + 4;
 	sim->pc_next = GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn);
+	sim->pc_next &= ~1;
 }
 void
 sim_lb(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 8);
+	uint64_t val = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 8);
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_lbu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_read8(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_read8(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_ld(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_read64(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_read64(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_lh(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 16);
+	uint64_t val = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 16);
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_lhu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 
 void
@@ -911,12 +966,16 @@ sim_lui(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_lw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 32);
+	uint64_t val = SEXT(mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 32);
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_lwu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	if (!(sim->is_exception && sim->mcause == CAUSE_LOAD_ACCESS))
+		REG(FIELD(RD)) = val;
 }
 void
 sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1165,7 +1224,7 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 	assert(mem);
 
 	for (;;) {
-		uint32_t insn = mem_read32(sim, mem, sim->pc);
+		uint32_t insn = mem_insn_read(sim, mem, sim->pc);
 		if (sim->trace & AEHNELN_TRACE_INSN)
 			printf("priv=%d pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n", sim->priv,
 			    sim->pc, insn);
@@ -1184,9 +1243,10 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 		sim->pc_next = sim->pc + 4;
 
 		/* get the first branch going */
-		/* TODO: inefficient decoding */
-		if (false) {
+		if (sim->is_exception) {
+			/* don't decode insn fetch exceptions */
 		}
+		/* TODO: inefficient decoding */
 #include "encoding.out.h"
 		else {
 			fprintf(stderr,
