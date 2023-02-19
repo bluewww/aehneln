@@ -545,6 +545,15 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
 		break;
+	case CSR_MIMPID:
+		REG(FIELD(RD)) = sim->mimpid;
+		break;
+	case CSR_MARCHID:
+		REG(FIELD(RD)) = sim->marchid;
+		break;
+	case CSR_MVENDORID:
+		REG(FIELD(RD)) = sim->mvendorid;
+		break;
 	case CSR_MSCRATCH:
 		REG(FIELD(RD)) = sim->mscratch;
 		sim->mscratch &= ~csr_arg;
@@ -562,6 +571,10 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MIE:
 		REG(FIELD(RD)) = sim->mie;
 		sim->mie &= ~csr_arg;
+		break;
+	case CSR_MTVEC:
+		REG(FIELD(RD)) = sim->mtvec & ~3;
+		sim->mtvec &= ~csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
@@ -635,6 +648,15 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
 		break;
+	case CSR_MIMPID:
+		REG(FIELD(RD)) = sim->mimpid;
+		break;
+	case CSR_MARCHID:
+		REG(FIELD(RD)) = sim->marchid;
+		break;
+	case CSR_MVENDORID:
+		REG(FIELD(RD)) = sim->mvendorid;
+		break;
 	case CSR_MSCRATCH:
 		REG(FIELD(RD)) = sim->mscratch;
 		sim->mscratch |= csr_arg;
@@ -651,6 +673,10 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MIE:
 		REG(FIELD(RD)) = sim->mie;
 		sim->mie |= csr_arg;
+		break;
+	case CSR_MTVEC:
+		REG(FIELD(RD)) = sim->mtvec & ~3;
+		sim->mtvec |= csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
@@ -720,6 +746,15 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
+		break;
+	case CSR_MIMPID:
+		REG(FIELD(RD)) = sim->mimpid;
+		break;
+	case CSR_MARCHID:
+		REG(FIELD(RD)) = sim->marchid;
+		break;
+	case CSR_MVENDORID:
+		REG(FIELD(RD)) = sim->mvendorid;
 		break;
 	case CSR_MSCRATCH:
 		REG(FIELD(RD)) = sim->mscratch;
@@ -1422,6 +1457,10 @@ main(int argc, char *argv[])
 
 	sim.mstatus |= (MISA_MXL_64 << OFFSET(MSTATUS_UXL));
 	sim.mstatus |= (MISA_MXL_64 << OFFSET(MSTATUS_SXL));
+
+	sim.mimpid = 1;
+	sim.marchid = 1;
+	sim.mvendorid = 0; /* non-commercial */
 
 	asim(&sim, &mem);
 

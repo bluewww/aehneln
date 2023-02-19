@@ -31,6 +31,9 @@ struct sim_ctx {
 	uint64_t mtvec;
 	uint64_t mstatus;
 	uint64_t misa;
+	uint64_t mimpid;
+	uint64_t marchid;
+	uint64_t mvendorid;
 	uint64_t mscratch;
 	uint64_t medeleg;
 	uint64_t mideleg;
