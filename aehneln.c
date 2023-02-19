@@ -1053,13 +1053,13 @@ void
 sim_slli(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) << FIELD(SHAMTW);
+	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) << FIELD(SHAMTD);
 }
 void
 sim_slliw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) << FIELD(SHAMTW4);
+	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) << FIELD(SHAMTW);
 	REG(FIELD(RD)) = SEXT(GET_REG(FIELD(RD)), 32);
 }
 void
@@ -1104,14 +1104,14 @@ sim_srai(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	/* c compiler needs to do artihmetic shift on signed types*/
-	REG(FIELD(RD)) = ((int64_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTW);
+	REG(FIELD(RD)) = ((int64_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTD);
 }
 void
 sim_sraiw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	/* c compiler needs to do artihmetic shift on signed types*/
-	REG(FIELD(RD)) = ((int32_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTW4);
+	REG(FIELD(RD)) = ((int32_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTW);
 	REG(FIELD(RD)) = SEXT(GET_REG(FIELD(RD)), 32);
 }
 void
@@ -1136,13 +1136,13 @@ void
 sim_srli(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) >> FIELD(SHAMTW);
+	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) >> FIELD(SHAMTD);
 }
 void
 sim_srliw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	REG(FIELD(RD)) = ((uint32_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTW4);
+	REG(FIELD(RD)) = ((uint32_t)GET_REG(FIELD(RS1))) >> FIELD(SHAMTW);
 	REG(FIELD(RD)) = SEXT(GET_REG(FIELD(RD)), 32);
 }
 void
