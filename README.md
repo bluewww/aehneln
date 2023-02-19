@@ -1,11 +1,39 @@
 # Aehneln
-Simple RISC-V simulator.
+Simple RISC-V rv64ima simulator.
+
+## Setup
+
+```
+./configure --prefix=$OPTIONAL_PREFIX
+make
+```
 
 ## Usage
 
 ```
 $ ./aehneln --help
 Usage: amaehneln RISCV-ELF
+```
+
+## Installing and Running Tests
+Make sure you have `riscv64-unknown-elf-gcc` in your PATH (at least version `10.2.0`.
+
+Install them by running
+
+```
+git submodule update --init --recursive
+cd tests/riscv-tests
+mkdir -p ../riscv/target
+./configure --prefix=$(readlink -f ../riscv/target)
+make
+make install
+
+```
+
+Then you can execute them with
+
+```
+make run-riscv-tests
 ```
 
 ## Misc
