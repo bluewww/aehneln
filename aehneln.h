@@ -20,9 +20,6 @@ struct elf {
 #define AEHNELN_TRACE_ILLEGAL (1 << 2)
 #define AEHNELN_TRACE_UNKNOWN_CSR (1 << 3)
 
-/* valid mcause values */
-#define MCAUSE_MASK 0x80000000000000ff
-
 struct sim_ctx {
 	/* machine state */
 	uint64_t pc;
@@ -32,6 +29,7 @@ struct sim_ctx {
 
 	uint64_t mtvec;
 	uint64_t mstatus;
+	uint64_t misa;
 	uint64_t medeleg;
 	uint64_t mideleg;
 	uint64_t mip;
@@ -88,16 +86,59 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 #include "encoding.out.h"
 #undef DECLARE_INSN
 
+/* various masks */
+#define MCAUSE_MASK 0x80000000000000ff
+#define MSTATUS_WMASK (MSTATUS_UXL | MSTATUS_SXL)
+
+/* misa */
+#define MISA_MXL_32 1ull
+#define MISA_MXL_64 2ull
+#define MISA_MXL_128 3ull
+
+#define MISA_A 0  /* Atomic extension */
+#define MISA_B 1  /* Tentatively reserved for Bit-Manipulation extension */
+#define MISA_C 2  /* Compressed extension */
+#define MISA_D 3  /* Double-precision floating-point extension */
+#define MISA_E 4  /* RV32E base ISA */
+#define MISA_F 5  /* Single-precision floating-point extension */
+#define MISA_G 6  /* Reserved */
+#define MISA_H 7  /* Hypervisor extension */
+#define MISA_I 8  /* RV32I/64I/128I base ISA */
+#define MISA_J 9  /* Tentatively reserved for Dynamically Translated Languages extension */
+#define MISA_K 10 /* Reserved */
+#define MISA_L 11 /* Reserved */
+#define MISA_M 12 /* Integer Multiply/Divide extension */
+#define MISA_N 13 /* Tentatively reserved for User-Level Interrupts extension */
+#define MISA_O 14 /* Reserved */
+#define MISA_P 15 /* Tentatively reserved for Packed-SIMD extension */
+#define MISA_Q 16 /* Quad-precision floating-point extension */
+#define MISA_R 17 /* Reserved */
+#define MISA_S 18 /* Supervisor mode implemented */
+#define MISA_T 19 /* Reserved */
+#define MISA_U 20 /* User mode implemented */
+#define MISA_V 21 /* Tentatively reserved for Vector extension */
+#define MISA_W 22 /* Reserved */
+#define MISA_X 23 /* Non-standard extensions present */
+#define MISA_Y 24 /* Reserved */
+#define MISA_Z 25 /* Reserved */
+
 /* instruction field access macros */
 #define INSN_FIELD(NAME, VAL) ((VAL & INSN_FIELD_##NAME) >> INSN_FIELD_OFFSET_##NAME)
 #define RV_X(x, s, n) (((x) >> (s)) & ((1 << (n)) - 1))
 
+/* Bit manipulation */
 /* sign extend form any bit. Note that bits position start counting from one
  * (and not zero) */
 #define SEXT(VAL, SHIFT)                                                                       \
 	((((uint64_t)(VAL) & (((uint64_t)1 << (SHIFT)) - 1)) ^ ((uint64_t)1 << ((SHIFT)-1))) - \
 	    ((uint64_t)1 << ((SHIFT)-1)))
+#define BIT(VAL) (1ull << VAL)
 
+/* TODO: we should rather update the encoding.h.out with offset constants than
+ * doing this hack */
+#define OFFSET(FIELD) (__builtin_ctzll(FIELD))
+
+/* CSR manipulation */
 #define CSR_FIELD_READ(CSR, FIELD) ((CSR & FIELD) >> __builtin_ctzll(FIELD))
 #define CSR_FIELD_WRITE(CSR, FIELD, VALUE) \
 	((CSR & ~(FIELD)) | ((VALUE << __builtin_ctzll(FIELD)) & FIELD))

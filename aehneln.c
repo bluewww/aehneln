@@ -526,6 +526,9 @@ sim_c_subw(struct sim_ctx *sim, struct mem_ctx *mem)
 #define CSR_PRIV_LVL(csr) RV_X(csr, 8, 2)
 #define CSR_READONLY(csr) (RV_X(csr, 10, 2) == 3)
 
+/* write VALUE to VAR preserving bits indicated by MASK (making them read-only) */
+#define WRITE_PRESERVE_BITS(VAR, MASK, VALUE) (((VAR) & (MASK)) | ((VALUE) & (~MASK)))
+
 static void
 csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 {
@@ -536,7 +539,10 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus &= ~csr_arg;
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK, sim->mstatus & ~csr_arg);
+		break;
+	case CSR_MISA:
+		REG(FIELD(RD)) = sim->misa;
 		break;
 	case CSR_MEDELEG:
 		/* bit 11 is read-only zero */
@@ -615,8 +621,10 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		fprintf(stdout, "balasr: writing 0x%016" PRIx64 "\n", csr_arg);
-		sim->mstatus |= csr_arg;
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK, sim->mstatus | csr_arg);
+		break;
+	case CSR_MISA:
+		REG(FIELD(RD)) = sim->misa;
 		break;
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
@@ -692,7 +700,10 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus = csr_arg;
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK, csr_arg);
+		break;
+	case CSR_MISA:
+		REG(FIELD(RD)) = sim->misa;
 		break;
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
@@ -966,11 +977,8 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 	 * mpp = u mode
 	 * if mpp != m then mprv=0
 	 */
-	fprintf(stdout, "balasr: mstatus=0x%016" PRIx64 "\n", sim->mstatus);
 
 	int mpp = CSR_FIELD_READ(sim->mstatus, MSTATUS_MPP);
-	fprintf(stdout, "balasr: pre=0x%016" PRIx64 "\n", sim->mstatus >> __builtin_ctzll(MSTATUS_MPP));
-	fprintf(stdout, "balasr: mpp=%d ctz=%d\n", mpp, __builtin_ctzll(MSTATUS_MPP));
 	int mpie = CSR_FIELD_READ(sim->mstatus, MSTATUS_MPIE);
 	sim->priv = mpp;
 	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MIE, mpie);
@@ -1380,6 +1388,15 @@ main(int argc, char *argv[])
 	sim.trace = trace;
 	sim.priv = PRV_M;
 	sim.pc = MEM_RAM_BASE;
+
+	/* we are a rv64 machine */
+	sim.misa |= BIT(MISA_I);
+	sim.misa |= BIT(MISA_M);
+	sim.misa |= BIT(MISA_A);
+	sim.misa |= (MISA_MXL_64 << 62);
+
+	sim.mstatus |= (MISA_MXL_64 << OFFSET(MSTATUS_UXL));
+	sim.mstatus |= (MISA_MXL_64 << OFFSET(MSTATUS_SXL));
 
 	asim(&sim, &mem);
 
