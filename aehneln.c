@@ -590,6 +590,10 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mcause &= MCAUSE_MASK;
 		break;
 		/* supervisor mode */
+	case CSR_SATP:
+		REG(FIELD(RD)) = sim->satp;
+		sim->satp &= ~csr_arg;
+		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
 		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
@@ -608,6 +612,10 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->scause;
 		sim->scause &= ~csr_arg;
 		sim->scause &= SCAUSE_MASK;
+		break;
+	case CSR_SSCRATCH:
+		REG(FIELD(RD)) = sim->sscratch;
+		sim->sscratch &= ~csr_arg;
 		break;
 		/* user mode */
 	case CSR_CYCLE:
@@ -714,6 +722,10 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mcause &= MCAUSE_MASK;
 		break;
 		/* supervisor mode */
+	case CSR_SATP:
+		REG(FIELD(RD)) = sim->satp;
+		sim->satp |= csr_arg;
+		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
 		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
@@ -730,8 +742,12 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_SCAUSE:
 		REG(FIELD(RD)) = sim->scause;
-		sim->scause |= ~csr_arg;
+		sim->scause |= csr_arg;
 		sim->scause &= SCAUSE_MASK;
+		break;
+	case CSR_SSCRATCH:
+		REG(FIELD(RD)) = sim->sscratch;
+		sim->sscratch |= csr_arg;
 		break;
 		/* user mode */
 	case CSR_CYCLE:
@@ -838,7 +854,6 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_SATP:
 		REG(FIELD(RD)) = sim->satp;
 		sim->satp = csr_arg;
-		fprintf(stderr, "warning: csr satp not fully implemented\n");
 		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
@@ -855,8 +870,12 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_SCAUSE:
 		REG(FIELD(RD)) = sim->scause;
-		sim->scause = ~csr_arg;
+		sim->scause = csr_arg;
 		sim->scause &= SCAUSE_MASK;
+		break;
+	case CSR_SSCRATCH:
+		REG(FIELD(RD)) = sim->sscratch;
+		sim->sscratch = csr_arg;
 		break;
 		/* user mode */
 	case CSR_CYCLE:

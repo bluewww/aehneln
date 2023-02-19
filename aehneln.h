@@ -51,6 +51,7 @@ struct sim_ctx {
 	uint64_t sip;
 	uint64_t sie;
 	uint64_t sepc;
+	uint64_t sscratch;
 	uint64_t scause;
 	uint64_t stval;
 	uint64_t satp;
