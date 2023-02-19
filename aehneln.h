@@ -29,9 +29,9 @@ struct sim_ctx {
 	uint64_t pc;
 	uint64_t regs[32];
 
-	uint64_t mtvec;
-	uint64_t satp;
 	int priv;
+
+	uint64_t mtvec;
 	uint64_t mstatus;
 	uint64_t medeleg;
 	uint64_t mideleg;
@@ -42,6 +42,10 @@ struct sim_ctx {
 	uint64_t mtval;
 	uint64_t mtime;
 	uint64_t mtimecmp;
+
+	/* uint64_t stvec */
+	/* uint64_t sstatus */
+	uint64_t satp;
 
 	/* other sim state */
 	uint32_t insn;

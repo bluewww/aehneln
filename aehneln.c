@@ -526,20 +526,9 @@ sim_c_subw(struct sim_ctx *sim, struct mem_ctx *mem)
 #define CSR_PRIV_LVL(csr) RV_X(csr, 8, 2)
 #define CSR_READONLY(csr) (RV_X(csr, 10, 2) == 3)
 
-void
-sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
+static void
+csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 {
-	(void)mem;
-
-	int csr_val = U_ITYPE_IMM(sim->insn);
-
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
-	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		sim->is_exception = true;
-		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
-		return;
-	}
 
 	switch (csr_val) {
 	case CSR_MHARTID:
@@ -547,20 +536,20 @@ sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus &= ~GET_REG(FIELD(RS1));
+		sim->mstatus &= ~csr_arg;
 		break;
 	case CSR_MIE:
 		REG(FIELD(RD)) = sim->mie;
-		sim->mie &= ~GET_REG(FIELD(RS1));
+		sim->mie &= ~csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc &= ~GET_REG(FIELD(RS1));
+		sim->mepc &= ~csr_arg;
 		sim->mepc &= ~1;
 		break;
 	case CSR_MCAUSE:
 		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause &= ~GET_REG(FIELD(RS1));
+		sim->mcause &= ~csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
 	default:
@@ -571,19 +560,44 @@ sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
 		break;
 	}
 }
+
+void
+sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	(void)mem;
+	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = GET_REG(FIELD(RS1));
+
+	/* we don't have enough privileges or we write to a read-only csr */
+	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
+		sim->is_exception = true;
+		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
+		return;
+	}
+
+	csrrc_generic(sim, csr_val, csr_arg);
+}
+
 void
 sim_csrrci(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = FIELD(RS1);
 
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
+	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
 		sim->is_exception = true;
 		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
 		return;
 	}
+
+	csrrc_generic(sim, csr_val, csr_arg);
+}
+
+static void
+csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
+{
 
 	switch (csr_val) {
 	case CSR_MHARTID:
@@ -591,20 +605,20 @@ sim_csrrci(struct sim_ctx *sim, struct mem_ctx *mem)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus &= ~FIELD(RS1);
+		sim->mstatus |= csr_arg;
 		break;
 	case CSR_MIE:
 		REG(FIELD(RD)) = sim->mie;
-		sim->mie &= ~FIELD(RS1);
+		sim->mie |= csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc &= ~FIELD(RS1);
+		sim->mepc |= csr_arg;
 		sim->mepc &= ~1;
 		break;
 	case CSR_MCAUSE:
 		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause &= ~FIELD(RS1);
+		sim->mcause |= csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
 	default:
@@ -615,82 +629,75 @@ sim_csrrci(struct sim_ctx *sim, struct mem_ctx *mem)
 		break;
 	}
 }
+
 void
 sim_csrrs(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = GET_REG(FIELD(RS1));
 
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
+	/* we don't have enough privileges or we write to a read-only csr*/
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
 		sim->is_exception = true;
 		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
 		return;
 	}
 
-	switch (csr_val) {
-	case CSR_MHARTID:
-		REG(FIELD(RD)) = CORE0_HARTID;
-		break;
-	case CSR_MSTATUS:
-		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus |= GET_REG(FIELD(RS1));
-		break;
-	case CSR_MIE:
-		REG(FIELD(RD)) = sim->mie;
-		sim->mie |= GET_REG(FIELD(RS1));
-		break;
-	case CSR_MEPC:
-		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc |= GET_REG(FIELD(RS1));
-		sim->mepc &= ~1;
-		break;
-	case CSR_MCAUSE:
-		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause |= GET_REG(FIELD(RS1));
-		sim->mcause &= MCAUSE_MASK;
-		break;
-	default:
-		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
-			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
-		break;
-	}
+	csrrs_generic(sim, csr_val, csr_arg);
 }
 void
 sim_csrrsi(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = FIELD(RS1);
 
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
+	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
 		sim->is_exception = true;
 		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
 		return;
 	}
 
+	csrrs_generic(sim, csr_val, csr_arg);
+}
+
+static void
+csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
+{
 	switch (csr_val) {
 	case CSR_MHARTID:
 		REG(FIELD(RD)) = CORE0_HARTID;
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus |= FIELD(RS1);
+		sim->mstatus = csr_arg;
+		break;
+	case CSR_MIE:
+		REG(FIELD(RD)) = sim->mie;
+		sim->mie = csr_arg;
+		break;
+	case CSR_MTVEC:
+		REG(FIELD(RD)) = sim->mtvec & ~3;
+		sim->mtvec = csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc |= FIELD(RS1);
+		sim->mepc = csr_arg;
 		sim->mepc &= ~1;
 		break;
 	case CSR_MCAUSE:
 		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause |= FIELD(RS1);
+		sim->mcause = csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
+	case CSR_SATP:
+		REG(FIELD(RD)) = sim->satp;
+		sim->satp = csr_arg;
+		fprintf(stderr, "warning: csr satp not fully implemented\n");
+		break;
+
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
@@ -705,48 +712,16 @@ sim_csrrw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = GET_REG(FIELD(RS1));
 
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
+	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
 		sim->is_exception = true;
 		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
 		return;
 	}
 
-	switch (csr_val) {
-	case CSR_MHARTID:
-		REG(FIELD(RD)) = CORE0_HARTID;
-		break;
-	case CSR_MSTATUS:
-		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus = GET_REG(FIELD(RS1));
-		break;
-	case CSR_MIE:
-		REG(FIELD(RD)) = sim->mie;
-		sim->mie = GET_REG(FIELD(RS1));
-		break;
-	case CSR_MTVEC:
-		REG(FIELD(RD)) = sim->mtvec & ~3;
-		sim->mtvec = GET_REG(FIELD(RS1));
-		break;
-	case CSR_MEPC:
-		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc = GET_REG(FIELD(RS1));
-		sim->mepc &= ~1;
-		break;
-	case CSR_MCAUSE:
-		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause = GET_REG(FIELD(RS1));
-		sim->mcause &= MCAUSE_MASK;
-		break;
-	default:
-		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
-			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
-		break;
-	}
+	csrrw_generic(sim, csr_val, csr_arg);
 }
 
 void
@@ -754,49 +729,16 @@ sim_csrrwi(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	int csr_val = U_ITYPE_IMM(sim->insn);
+	uint64_t csr_arg = FIELD(RS1);
 
-	/* abort if we don't have enough privileges or we write to a read-only
-	 * csr */
+	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
 		sim->is_exception = true;
 		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
 		return;
 	}
 
-	switch (csr_val) {
-	case CSR_MHARTID:
-		REG(FIELD(RD)) = CORE0_HARTID;
-		break;
-	case CSR_MSTATUS:
-		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus = FIELD(RS1);
-		break;
-	case CSR_MIE:
-		REG(FIELD(RD)) = sim->mie;
-		sim->mie = FIELD(RS1);
-		break;
-	case CSR_MEPC:
-		REG(FIELD(RD)) = sim->mepc;
-		sim->mepc = FIELD(RS1);
-		sim->mepc &= ~1;
-		break;
-	case CSR_MCAUSE:
-		REG(FIELD(RD)) = sim->mcause;
-		sim->mcause = FIELD(RS1);
-		sim->mcause &= MCAUSE_MASK;
-		break;
-	case CSR_SATP:
-		REG(FIELD(RD)) = sim->satp;
-		sim->satp = FIELD(RS1);
-		fprintf(stderr, "warning: csr satp not fully implemented\n");
-		break;
-	default:
-		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
-			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->mcause = CAUSE_ILLEGAL_INSTRUCTION;
-		break;
-	}
+	csrrw_generic(sim, csr_val, csr_arg);
 }
 void
 sim_divuw(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1273,8 +1215,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			    sim->mcause == CAUSE_ILLEGAL_INSTRUCTION) {
 				fprintf(stderr,
 				    "traced illegal instruction pc=0x%016" PRIx64
-				    " insn=0x%08" PRIx32 "\n",
-				    sim->pc, insn);
+				    " insn=0x%08" PRIx32 " mtvec=0x%08" PRIx64 "\n",
+				    sim->pc, insn, sim->mtvec);
 			}
 			if ((sim->mtvec & 3) == 0) {
 				/* direct mode */
