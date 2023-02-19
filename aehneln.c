@@ -539,10 +539,15 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK, sim->mstatus & ~csr_arg);
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK,
+		    sim->mstatus & ~csr_arg);
 		break;
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
+		break;
+	case CSR_MSCRATCH:
+		REG(FIELD(RD)) = sim->mscratch;
+		sim->mscratch &= ~csr_arg;
 		break;
 	case CSR_MEDELEG:
 		/* bit 11 is read-only zero */
@@ -567,6 +572,9 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mcause;
 		sim->mcause &= ~csr_arg;
 		sim->mcause &= MCAUSE_MASK;
+		break;
+	case CSR_CYCLE:
+		REG(FIELD(RD)) = sim->cycle;
 		break;
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
@@ -621,10 +629,15 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 	case CSR_MSTATUS:
 		REG(FIELD(RD)) = sim->mstatus;
-		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK, sim->mstatus | csr_arg);
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, MSTATUS_WMASK,
+		    sim->mstatus | csr_arg);
 		break;
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
+		break;
+	case CSR_MSCRATCH:
+		REG(FIELD(RD)) = sim->mscratch;
+		sim->mscratch |= csr_arg;
 		break;
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
@@ -648,6 +661,9 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mcause;
 		sim->mcause |= csr_arg;
 		sim->mcause &= MCAUSE_MASK;
+		break;
+	case CSR_CYCLE:
+		REG(FIELD(RD)) = sim->cycle;
 		break;
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
@@ -705,6 +721,10 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MISA:
 		REG(FIELD(RD)) = sim->misa;
 		break;
+	case CSR_MSCRATCH:
+		REG(FIELD(RD)) = sim->mscratch;
+		sim->mscratch = csr_arg;
+		break;
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
 		sim->medeleg = csr_arg;
@@ -737,7 +757,9 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->satp = csr_arg;
 		fprintf(stderr, "warning: csr satp not fully implemented\n");
 		break;
-
+	case CSR_CYCLE:
+		REG(FIELD(RD)) = sim->cycle;
+		break;
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
@@ -1238,6 +1260,9 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			exit(EXIT_FAILURE);
 		}
 #undef DECLARE_INSN
+
+		/* update cycle counters */
+		sim->cycle += 1;
 
 		/* update pc according to machine state (normal, exception, interrupt) */
 		if (sim->is_exception && sim->priv <= PRV_S &&

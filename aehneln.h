@@ -27,9 +27,11 @@ struct sim_ctx {
 
 	int priv;
 
+	/* m-mode csrs */
 	uint64_t mtvec;
 	uint64_t mstatus;
 	uint64_t misa;
+	uint64_t mscratch;
 	uint64_t medeleg;
 	uint64_t mideleg;
 	uint64_t mip;
@@ -40,6 +42,7 @@ struct sim_ctx {
 	uint64_t mtime;
 	uint64_t mtimecmp;
 
+	/* s-mode csrs */
 	uint64_t stvec;
 	/* uint64_t sstatus; */ /* sstatus is a restricted view of mstatus */
 	uint64_t sip;
@@ -48,6 +51,9 @@ struct sim_ctx {
 	uint64_t scause;
 	uint64_t stval;
 	uint64_t satp;
+
+	/* u-mode csrs */
+	uint64_t cycle;
 
 	/* other sim state */
 	uint32_t insn;
