@@ -8,13 +8,12 @@
 #define CORE0_HARTID 0
 
 #define MEM_RAM_BASE 0x80000000
-#define MEM_TOHOST  0x80001000
+#define MEM_TOHOST 0x80001000
 
 struct elf {
 	char *bytes;
 	uint64_t size;
 };
-
 
 #define AEHNELN_TRACE_INSN (1 << 0)
 #define AEHNELN_TRACE_MEM (1 << 1)
@@ -43,15 +42,23 @@ struct sim_ctx {
 	uint64_t mtime;
 	uint64_t mtimecmp;
 
-	/* uint64_t stvec */
-	/* uint64_t sstatus */
+	uint64_t stvec;
+	/* uint64_t sstatus; */ /* sstatus is a restricted view of mstatus */
+	uint64_t sip;
+	uint64_t sie;
+	uint64_t sepc;
+	uint64_t scause;
+	uint64_t stval;
 	uint64_t satp;
 
 	/* other sim state */
 	uint32_t insn;
 	int trace;
 	uint64_t pc_next;
-	bool is_exception; /* whether an exception is triggered */
+	bool is_exception;	/* whether an exception is triggered */
+	uint64_t generic_cause; /* generic cause. Holds exception cause before
+				 * delegation logic causes it to be written to mcause or
+				 * scause */
 };
 
 struct mem_ctx {
@@ -91,7 +98,7 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 	((((uint64_t)(VAL) & (((uint64_t)1 << (SHIFT)) - 1)) ^ ((uint64_t)1 << ((SHIFT)-1))) - \
 	    ((uint64_t)1 << ((SHIFT)-1)))
 
-#define CSR_FIELD_READ(CSR, FIELD) ((CSR >> __builtin_ctzll(FIELD)) & FIELD)
+#define CSR_FIELD_READ(CSR, FIELD) ((CSR & FIELD) >> __builtin_ctzll(FIELD))
 #define CSR_FIELD_WRITE(CSR, FIELD, VALUE) \
 	((CSR & ~(FIELD)) | ((VALUE << __builtin_ctzll(FIELD)) & FIELD))
 
