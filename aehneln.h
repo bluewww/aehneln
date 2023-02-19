@@ -20,6 +20,11 @@ struct elf {
 #define AEHNELN_TRACE_ILLEGAL (1 << 2)
 #define AEHNELN_TRACE_UNKNOWN_CSR (1 << 3)
 
+#define AEHNELN_PAGESIZE 4096
+#define AEHNELN_PAGEOFFSET 12
+#define AEHNELN_LEVELS 3
+#define AEHNELN_PTESIZE 8
+
 struct sim_ctx {
 	/* machine state */
 	uint64_t pc;
@@ -154,14 +159,36 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 	((((uint64_t)(VAL) & (((uint64_t)1 << (SHIFT)) - 1)) ^ ((uint64_t)1 << ((SHIFT)-1))) - \
 	    ((uint64_t)1 << ((SHIFT)-1)))
 #define BIT(VAL) (1ull << VAL)
+#define GENMASK(VAL) (((uint64_t)1 << VAL) - 1)
 
 /* TODO: we should rather update the encoding.h.out with offset constants than
  * doing this hack */
 #define OFFSET(FIELD) (__builtin_ctzll(FIELD))
 
+/* generic reg manipulation */
+#define REG_FIELD_READ(REG, FIELD) ((REG & FIELD) >> __builtin_ctzll(FIELD))
+#define REG_FIELD_WRITE(REG, FIELD, VALUE) \
+	((REG & ~(FIELD)) | ((VALUE << __builtin_ctzll(FIELD)) & FIELD))
+
 /* CSR manipulation */
 #define CSR_FIELD_READ(CSR, FIELD) ((CSR & FIELD) >> __builtin_ctzll(FIELD))
 #define CSR_FIELD_WRITE(CSR, FIELD, VALUE) \
 	((CSR & ~(FIELD)) | ((VALUE << __builtin_ctzll(FIELD)) & FIELD))
+
+/* Page table helpers */
+#define SV39_VPN_SIZE 9
+#define SV39_VPN_SHIFT 9
+#define SV39_VPNS(ADDR) (ADDR >> AEHNELN_PAGEOFFSET)
+#define SV39_VPN(ADDR, NUM) ((SV39_VPNS(ADDR) >> (NUM * SV39_VPN_SHIFT)) & GENMASK(SV39_VPN_SIZE))
+
+#define SV39_PPN_SIZE(NUM) (NUM < 2 ? 9 : 26)
+#define SV39_PPN_SHIFT 9
+#define SV39_FULL_PPN_SIZE (9 + 9 + 26)
+#define SV39_FULL_PPN(PTE) ((PTE >> PTE_PPN_SHIFT) & GENMASK(SV39_FULL_PPN_SIZE))
+#define SV39_PPN(PTE, NUM) \
+	((SV39_FULL_PPN(PTE) >> (NUM * SV39_PPN_SHIFT)) & GENMASK(SV39_PPN_SIZE(NUM)))
+
+enum access_type { ACC_R = 0, ACC_W = 1, ACC_X = 2, ACC_BUG = 3 };
+enum fault_type { ACCESS = 0, PAGEFAULT = 1 };
 
 #endif /* AEHNELN_H */

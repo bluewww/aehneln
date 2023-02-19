@@ -101,6 +101,174 @@ exception(struct sim_ctx *sim, uint64_t cause)
 	sim->generic_cause = cause;
 }
 
+static int
+cause_from_access(enum access_type access_type, enum fault_type fault_type)
+{
+	switch (access_type) {
+	case ACC_W:
+		return fault_type == PAGEFAULT ? CAUSE_STORE_PAGE_FAULT : CAUSE_STORE_ACCESS;
+	case ACC_R:
+		return fault_type == PAGEFAULT ? CAUSE_LOAD_PAGE_FAULT : CAUSE_LOAD_ACCESS;
+	case ACC_X:
+		return fault_type == PAGEFAULT ? CAUSE_FETCH_PAGE_FAULT : CAUSE_FETCH_ACCESS;
+	default:
+		exit(EXIT_FAILURE);
+	}
+}
+
+static int
+pte_access_from_access(enum access_type access_type)
+{
+	switch (access_type) {
+	case ACC_W:
+		return PTE_W;
+	case ACC_R:
+		return PTE_R;
+	case ACC_X:
+		return PTE_X;
+	default:
+		exit(EXIT_FAILURE);
+	}
+}
+
+static uint64_t
+ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum access_type type)
+{
+	/* translation off */
+	if (CSR_FIELD_READ(sim->satp, SATP64_MODE) == SATP_MODE_OFF)
+		return vaddr;
+
+	assert(CSR_FIELD_READ(sim->satp, SATP64_MODE) == SATP_MODE_SV39);
+
+	/* only works in S or U mode (effective) */
+	if (sim->priv == PRV_M && CSR_FIELD_READ(sim->mstatus, MSTATUS_MPRV) == 0)
+		return vaddr;
+
+	if (CSR_FIELD_READ(sim->mstatus, MSTATUS_MPP) == PRV_M &&
+	    CSR_FIELD_READ(sim->mstatus, MSTATUS_MPRV) == 1)
+		return vaddr;
+
+	/* At this point we should either be in
+	 * MPRV=0 and prv=S/U or
+	 * MPRV=1 and prv=M/S/U and mpp=S/U
+	 */
+
+	/* walk table according to privilege spec 4.3.2 */
+	uint64_t ppn = CSR_FIELD_READ(sim->satp, SATP64_PPN);
+	uint64_t addr = ppn * AEHNELN_PAGESIZE;
+	int level = AEHNELN_LEVELS - 1;
+
+	for (;;) {
+		uint64_t pte = mem_read64(sim, mem, addr + SV39_VPN(addr, level) * AEHNELN_PTESIZE);
+		if (sim->is_exception) {
+			/* re-raise exception */
+			exception(sim, cause_from_access(type, ACCESS));
+			return pte;
+		}
+
+		if (REG_FIELD_READ(pte, PTE_V) == 0 ||
+		    (REG_FIELD_READ(pte, PTE_R) == 0 && REG_FIELD_READ(pte, PTE_W) == 1) ||
+		    (REG_FIELD_READ(pte, PTE_RSVD))) {
+			exception(sim, cause_from_access(type, PAGEFAULT));
+			return 0xdeadbee1;
+		}
+
+		if (REG_FIELD_READ(pte, PTE_R) == 1 || REG_FIELD_READ(pte, PTE_X) == 1) {
+			/* leaf page table */
+			/* check privilege mode. We consider mprv since it is also affected by SUM
+			 */
+			int effective_priv = CSR_FIELD_READ(sim->mstatus, MSTATUS_MPRV) ?
+			    (int)CSR_FIELD_READ(sim->mstatus, MSTATUS_MPP) :
+			    sim->priv;
+
+			switch (effective_priv) {
+			case PRV_U:
+				if (REG_FIELD_READ(pte, PTE_U) == 0) {
+					exception(sim, cause_from_access(type, PAGEFAULT));
+					return 0xdeadbee4;
+				}
+				break;
+			case PRV_S:
+				/* supervisor can't access usermode pages when SUM is clear */
+				if (REG_FIELD_READ(pte, PTE_U) == 1 &&
+				    CSR_FIELD_READ(sim->mstatus, MSTATUS_SUM) == 0) {
+					exception(sim, cause_from_access(type, PAGEFAULT));
+					return 0xdeadbee4;
+				}
+				/* supervisor maybe never execute usermode pages */
+				if (REG_FIELD_READ(pte, PTE_U) == 1 && type == ACC_X) {
+					exception(sim, cause_from_access(type, PAGEFAULT));
+					return 0xdeadbee4;
+				}
+				break;
+			case PRV_M:
+				/* handled below */
+				break;
+			}
+
+			/* check rwx permissions */
+			int pte_rw = REG_FIELD_READ(pte, pte_access_from_access(ACC_R)) ||
+			    REG_FIELD_READ(pte, pte_access_from_access(ACC_X));
+
+			if (effective_priv == PRV_M && type == ACC_R &&
+			    CSR_FIELD_READ(sim->mstatus, MSTATUS_MXR) == 1 && !pte_rw) {
+				/* MXR privilege spec 3.1.6.3 */
+				exception(sim, cause_from_access(type, PAGEFAULT));
+				return 0xdeadbee4;
+			} else if (!REG_FIELD_READ(pte, pte_access_from_access(type))) {
+				/* regular rwx check */
+				exception(sim, cause_from_access(type, PAGEFAULT));
+				return 0xdeadbee4;
+			}
+
+			/* check for misaligned superpage */
+			if (SV39_PPN(pte, level) != 0) {
+				exception(sim, cause_from_access(type, PAGEFAULT));
+				return 0xdeadbee4;
+			}
+
+			/* dirty and accessed check */
+			if (REG_FIELD_READ(pte, PTE_A) == 0 ||
+			    (type == ACC_W && REG_FIELD_READ(pte, PTE_D) == 0)) {
+				exception(sim, cause_from_access(type, PAGEFAULT));
+				return 0xdeadbee5;
+			}
+
+			/* At this point the translation is successfull */
+			uint64_t paddr = 0;
+
+			/* physical offset part */
+			for (int i = AEHNELN_LEVELS - 1; i >= level; i--) {
+				paddr <<= SV39_PPN_SHIFT;
+				paddr |= SV39_PPN(pte, i);
+			}
+
+			/* virtual offset part (level > 0 we have a superpage) */
+			for (int i = level - 1; i >= 0; i--) {
+				paddr <<= SV39_VPN_SIZE;
+				paddr |= SV39_VPN(vaddr, i);
+			}
+
+			paddr <<= AEHNELN_PAGEOFFSET;
+			paddr |= vaddr & GENMASK(AEHNELN_PAGEOFFSET);
+
+			return paddr;
+		} else {
+			/* go to next level */
+			level = level - 1;
+			if (level < 0) {
+				exception(sim, cause_from_access(type, PAGEFAULT));
+				return 0xdeadbee2;
+			}
+
+			ppn = SV39_FULL_PPN(pte);
+			addr = ppn * AEHNELN_PAGESIZE;
+		}
+	}
+
+	assert(0);
+}
+
 uint32_t
 mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
@@ -128,8 +296,7 @@ mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_LOAD_ACCESS;
+		exception(sim, CAUSE_LOAD_ACCESS);
 		return 0xdeadbeef;
 	}
 
