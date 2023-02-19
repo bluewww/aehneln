@@ -528,12 +528,15 @@ sim_c_subw(struct sim_ctx *sim, struct mem_ctx *mem)
 
 /* write VALUE to VAR preserving bits indicated by MASK (making them read-only) */
 #define WRITE_PRESERVE_BITS(VAR, MASK, VALUE) (((VAR) & (MASK)) | ((VALUE) & (~MASK)))
+/* read VALUE VAR zeroing bits indicated by MASK (making them "invisible") */
+#define READ_ZEROD_BITS(VAR, MASK) ((VAR) & (~MASK))
 
 static void
 csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 {
 
 	switch (csr_val) {
+		/* machine mode */
 	case CSR_MHARTID:
 		REG(FIELD(RD)) = CORE0_HARTID;
 		break;
@@ -586,6 +589,27 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mcause &= ~csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
+		/* supervisor mode */
+	case CSR_SSTATUS:
+		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
+		    sim->mstatus & ~csr_arg);
+		break;
+	case CSR_STVEC:
+		REG(FIELD(RD)) = sim->stvec & ~3;
+		sim->stvec &= ~csr_arg;
+		break;
+	case CSR_SEPC:
+		REG(FIELD(RD)) = sim->sepc;
+		sim->sepc &= ~csr_arg;
+		sim->sepc &= ~1;
+		break;
+	case CSR_SCAUSE:
+		REG(FIELD(RD)) = sim->scause;
+		sim->scause &= ~csr_arg;
+		sim->scause &= SCAUSE_MASK;
+		break;
+		/* user mode */
 	case CSR_CYCLE:
 		REG(FIELD(RD)) = sim->cycle;
 		break;
@@ -637,6 +661,7 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 {
 
 	switch (csr_val) {
+		/* machine mode */
 	case CSR_MHARTID:
 		REG(FIELD(RD)) = CORE0_HARTID;
 		break;
@@ -688,6 +713,27 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mcause |= csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
+		/* supervisor mode */
+	case CSR_SSTATUS:
+		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
+		    sim->mstatus | csr_arg);
+		break;
+	case CSR_STVEC:
+		REG(FIELD(RD)) = sim->stvec & ~3;
+		sim->stvec |= csr_arg;
+		break;
+	case CSR_SEPC:
+		REG(FIELD(RD)) = sim->sepc;
+		sim->sepc |= csr_arg;
+		sim->sepc &= ~1;
+		break;
+	case CSR_SCAUSE:
+		REG(FIELD(RD)) = sim->scause;
+		sim->scause |= ~csr_arg;
+		sim->scause &= SCAUSE_MASK;
+		break;
+		/* user mode */
 	case CSR_CYCLE:
 		REG(FIELD(RD)) = sim->cycle;
 		break;
@@ -737,6 +783,7 @@ static void
 csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 {
 	switch (csr_val) {
+		/* machine mode */
 	case CSR_MHARTID:
 		REG(FIELD(RD)) = CORE0_HARTID;
 		break;
@@ -787,11 +834,31 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mcause = csr_arg;
 		sim->mcause &= MCAUSE_MASK;
 		break;
+		/* supervisor mode */
 	case CSR_SATP:
 		REG(FIELD(RD)) = sim->satp;
 		sim->satp = csr_arg;
 		fprintf(stderr, "warning: csr satp not fully implemented\n");
 		break;
+	case CSR_SSTATUS:
+		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
+		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK, csr_arg);
+		break;
+	case CSR_STVEC:
+		REG(FIELD(RD)) = sim->stvec & ~3;
+		sim->stvec = csr_arg;
+		break;
+	case CSR_SEPC:
+		REG(FIELD(RD)) = sim->sepc;
+		sim->sepc = csr_arg;
+		sim->sepc &= ~1;
+		break;
+	case CSR_SCAUSE:
+		REG(FIELD(RD)) = sim->scause;
+		sim->scause = ~csr_arg;
+		sim->scause &= SCAUSE_MASK;
+		break;
+		/* user mode */
 	case CSR_CYCLE:
 		REG(FIELD(RD)) = sim->cycle;
 		break;
@@ -1041,7 +1108,8 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MIE, mpie);
 	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPIE, 1);
 	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPP, PRV_U);
-	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPRV, 0);
+	if (mpp != PRV_M)
+		sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPRV, 0);
 	/* now return */
 	sim->pc_next = sim->mepc;
 }
@@ -1189,7 +1257,32 @@ sim_sraw(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sret(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	/* sret works in m-mode and s-mode. privileged-spec 3.3.2 and 3.1.6.1 */
+	if (!(sim->priv >= PRV_S) || CSR_FIELD_READ(sim->mstatus, MSTATUS_TSR)) {
+		sim->is_exception = true;
+		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		return;
+	}
+	/* Privilege mode updates according to privileged spec 3.3.2
+	 * y = spp
+	 * sie = spie
+	 * priv = y
+	 * spie = 1
+	 * spp = u mode
+	 * if spp != m then mprv=0
+	 */
+
+	int spp = CSR_FIELD_READ(sim->mstatus, MSTATUS_SPP);
+	int spie = CSR_FIELD_READ(sim->mstatus, MSTATUS_SPIE);
+	sim->priv = spp;
+	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_SIE, spie);
+	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_SPIE, 1);
+	sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_SPP, PRV_U);
+	if (spp != PRV_M)
+		sim->mstatus = CSR_FIELD_WRITE(sim->mstatus, MSTATUS_MPRV, 0);
+	/* now return */
+	sim->pc_next = sim->sepc;
 }
 void
 sim_srl(struct sim_ctx *sim, struct mem_ctx *mem)

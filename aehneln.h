@@ -95,9 +95,20 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 #include "encoding.out.h"
 #undef DECLARE_INSN
 
-/* various masks */
+/* access masks */
 #define MCAUSE_MASK 0x80000000000000ff
+#define SCAUSE_MASK 0x80000000000000ff
+/* WMASK = writes should not update these fields
+ * RMASK = reads should zero these fields */
 #define MSTATUS_WMASK (MSTATUS_UXL | MSTATUS_SXL)
+#define MSTATUS_RMASK (0)
+/* note that sstatus is just a restricted view of mstatus */
+#define SSTATUS_READONLY (MSTATUS_SXL | MSTATUS_UXL)
+#define SSTATUS_INVISIBLE                                                                    \
+	(MSTATUS_MBE | MSTATUS_SBE | MSTATUS_TSR | MSTATUS_TW | MSTATUS_TVM | MSTATUS_MPRV | \
+	    MSTATUS_MPP | MSTATUS_MPIE | MSTATUS_MIE)
+#define SSTATUS_WMASK (SSTATUS_READONLY | SSTATUS_INVISIBLE)
+#define SSTATUS_RMASK (SSTATUS_INVISIBLE)
 
 /* misa */
 #define MISA_MXL_32 1ull
