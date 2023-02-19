@@ -94,6 +94,13 @@ mem_ctx_copy_elf(struct mem_ctx *mem, char *elf, uint64_t base, uint64_t size)
 	return 0;
 }
 
+static void
+exception(struct sim_ctx *sim, uint64_t cause)
+{
+	sim->is_exception = true;
+	sim->generic_cause = cause;
+}
+
 uint32_t
 mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
@@ -101,8 +108,7 @@ mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_FETCH_ACCESS;
+		exception(sim, CAUSE_FETCH_ACCESS);
 		return 0xdeadbeef;
 	}
 	uint32_t data;
@@ -143,8 +149,7 @@ mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_LOAD_ACCESS;
+		exception(sim, CAUSE_LOAD_ACCESS);
 		return 0xdeadbeef;
 	}
 	uint32_t data;
@@ -163,8 +168,7 @@ mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_LOAD_ACCESS;
+		exception(sim, CAUSE_LOAD_ACCESS);
 		return 0xbeef;
 	}
 	uint16_t data;
@@ -183,8 +187,7 @@ mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_LOAD_ACCESS;
+		exception(sim, CAUSE_LOAD_ACCESS);
 		return 0xff;
 	}
 	uint8_t data;
@@ -204,8 +207,7 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n",
 			    addr, data);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_STORE_ACCESS;
+		exception(sim, CAUSE_STORE_ACCESS);
 		return;
 	}
 	if (addr == MEM_TOHOST) {
@@ -227,8 +229,7 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%08" PRIx32 "\n",
 			    addr, data);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_STORE_ACCESS;
+		exception(sim, CAUSE_STORE_ACCESS);
 		return;
 	}
 
@@ -251,8 +252,7 @@ mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t da
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%04" PRIx16 "\n",
 			    addr, data);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_STORE_ACCESS;
+		exception(sim, CAUSE_STORE_ACCESS);
 		return;
 	}
 
@@ -275,8 +275,7 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%02" PRIx8 "\n",
 			    addr, data);
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_STORE_ACCESS;
+		exception(sim, CAUSE_STORE_ACCESS);
 		return;
 	}
 
@@ -624,8 +623,7 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		break;
 	}
 }
@@ -639,8 +637,7 @@ sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -656,8 +653,7 @@ sim_csrrci(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -756,8 +752,7 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		break;
 	}
 }
@@ -771,8 +766,7 @@ sim_csrrs(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr*/
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -787,8 +781,7 @@ sim_csrrsi(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -884,8 +877,7 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		break;
 	}
 }
@@ -899,8 +891,7 @@ sim_csrrw(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -916,8 +907,7 @@ sim_csrrwi(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 
@@ -949,13 +939,12 @@ sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	/* transition to machine mode */
-	sim->is_exception = true;
 	if (sim->priv == PRV_M)
-		sim->generic_cause = CAUSE_MACHINE_ECALL;
+		exception(sim, CAUSE_MACHINE_ECALL);
 	else if (sim->priv == PRV_S)
-		sim->generic_cause = CAUSE_SUPERVISOR_ECALL;
+		exception(sim, CAUSE_SUPERVISOR_ECALL);
 	else if (sim->priv == PRV_U)
-		sim->generic_cause = CAUSE_USER_ECALL;
+		exception(sim, CAUSE_USER_ECALL);
 
 	/* sim->mepc = sim->pc; */
 	/* sim->priv = PRV_M; */
@@ -1108,8 +1097,7 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	/* mret works only in m-mode */
 	if (!(sim->priv >= PRV_M)) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 	/* Privilege mode updates according to privileged spec 3.3.2
@@ -1279,8 +1267,7 @@ sim_sret(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	/* sret works in m-mode and s-mode. privileged-spec 3.3.2 and 3.1.6.1 */
 	if (!(sim->priv >= PRV_S) || CSR_FIELD_READ(sim->mstatus, MSTATUS_TSR)) {
-		sim->is_exception = true;
-		sim->generic_cause = CAUSE_ILLEGAL_INSTRUCTION;
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
 		return;
 	}
 	/* Privilege mode updates according to privileged spec 3.3.2
