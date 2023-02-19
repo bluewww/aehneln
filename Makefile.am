@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 dist_doc_DATA = README.md
 bin_PROGRAMS = aehneln
-aehneln_SOURCES = aehneln.c
+aehneln_SOURCES = aehneln.c aehneln.h encoding.out.h
 AM_CFLAGS = -std=gnu11 -Wall -Wextra
 
 tests/bin/%.bin: tests/riscv/target/share/riscv-tests/isa/%
