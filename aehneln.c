@@ -270,6 +270,96 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 }
 
 uint32_t
+mem_insn_vread(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_X);
+	if (sim->is_exception)
+		return 0xdeadbeef;
+
+	return mem_insn_read(sim, mem, paddr);
+}
+
+uint64_t
+mem_vread64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_R);
+	if (sim->is_exception)
+		return 0xdeadbeefdeadbeef;
+
+	return mem_read64(sim, mem, paddr);
+}
+
+uint32_t
+mem_vread32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_R);
+	if (sim->is_exception)
+		return 0xdeadbeef;
+
+	return mem_read32(sim, mem, paddr);
+}
+
+uint16_t
+mem_vread16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_R);
+	if (sim->is_exception)
+		return 0xdead;
+
+	return mem_read16(sim, mem, paddr);
+}
+
+uint8_t
+mem_vread8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_R);
+	if (sim->is_exception)
+		return 0x0;
+
+	return mem_read8(sim, mem, paddr);
+}
+
+void
+mem_vwrite64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint64_t data)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_W);
+	if (sim->is_exception)
+		return;
+
+	return mem_write64(sim, mem, paddr, data);
+}
+
+void
+mem_vwrite32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint32_t data)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_W);
+	if (sim->is_exception)
+		return;
+
+	return mem_write32(sim, mem, paddr, data);
+}
+
+void
+mem_vwrite16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint16_t data)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_W);
+	if (sim->is_exception)
+		return;
+
+	return mem_write16(sim, mem, paddr, data);
+}
+
+void
+mem_vwrite8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint8_t data)
+{
+	uint64_t paddr = ptwalk_sv39(sim, mem, vaddr, ACC_W);
+	if (sim->is_exception)
+		return;
+
+	return mem_write8(sim, mem, paddr, data);
+}
+
+uint32_t
 mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	/* TODO: I/O devices */
@@ -1199,35 +1289,35 @@ sim_jalr(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_lb(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 8);
+	uint64_t val = SEXT(mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 8);
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lbu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_read8(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_vread8(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
 void
 sim_ld(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_read64(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lh(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = SEXT(mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 16);
+	uint64_t val = SEXT(mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 16);
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lhu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_read16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
@@ -1247,14 +1337,14 @@ sim_lui(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_lw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = SEXT(mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 32);
+	uint64_t val = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 32);
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lwu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_read32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
+	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
@@ -1325,7 +1415,7 @@ sim_remw(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sb(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	mem_write8(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
+	mem_vwrite8(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
 	    (uint8_t)GET_REG(FIELD(RS2)));
 }
 void
@@ -1336,7 +1426,7 @@ sim_sc_d(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sd(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	mem_write64(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
 	    (uint64_t)GET_REG(FIELD(RS2)));
 }
 void
@@ -1347,7 +1437,7 @@ sim_sfence_vma(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sh(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	mem_write16(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
+	mem_vwrite16(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
 	    (uint16_t)GET_REG(FIELD(RS2)));
 }
 void
@@ -1497,7 +1587,7 @@ sim_subw(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	mem_write32(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)) + STYPE_IMM(sim->insn),
 	    (uint32_t)GET_REG(FIELD(RS2)));
 }
 void
@@ -1530,7 +1620,7 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 	assert(mem);
 
 	for (;;) {
-		uint32_t insn = mem_insn_read(sim, mem, sim->pc);
+		uint32_t insn = mem_insn_vread(sim, mem, sim->pc);
 		if (sim->trace & AEHNELN_TRACE_INSN)
 			printf("priv=%d pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n", sim->priv,
 			    sim->pc, insn);
