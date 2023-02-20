@@ -1189,7 +1189,8 @@ sim_dret(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_ebreak(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	exception(sim, CAUSE_BREAKPOINT);
 }
 void
 sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1202,9 +1203,6 @@ sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
 		exception(sim, CAUSE_SUPERVISOR_ECALL);
 	else if (sim->priv == PRV_U)
 		exception(sim, CAUSE_USER_ECALL);
-
-	/* sim->mepc = sim->pc; */
-	/* sim->priv = PRV_M; */
 }
 
 void
