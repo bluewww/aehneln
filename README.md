@@ -4,6 +4,7 @@ Simple RISC-V rv64ima simulator.
 ## Setup
 
 ```
+./autogen.sh
 ./configure --prefix=$OPTIONAL_PREFIX
 make
 ```
