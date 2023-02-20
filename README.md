@@ -24,11 +24,9 @@ Install them by running
 ```
 git submodule update --init --recursive
 cd tests/riscv-tests
-mkdir -p ../riscv/target
 ./configure --prefix=$(readlink -f ../riscv/target)
 make
 make install
-
 ```
 
 Then you can execute them by calling
