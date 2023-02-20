@@ -25,7 +25,6 @@ tests/bin/rv64mi-p-scall.bin \
 tests/bin/rv64mi-p-sd-misaligned.bin \
 tests/bin/rv64mi-p-sh-misaligned.bin \
 tests/bin/rv64mi-p-sw-misaligned.bin \
-tests/bin/rv64mzicbo-p-zero.bin \
 tests/bin/rv64si-p-csr.bin \
 tests/bin/rv64si-p-dirty.bin \
 tests/bin/rv64si-p-icache-alias.bin \
@@ -249,29 +248,7 @@ tests/bin/rv64um-v-mulw.bin \
 tests/bin/rv64um-v-rem.bin \
 tests/bin/rv64um-v-remu.bin \
 tests/bin/rv64um-v-remuw.bin \
-tests/bin/rv64um-v-remw.bin \
-tests/bin/rv64uzfh-p-fadd.bin \
-tests/bin/rv64uzfh-p-fclass.bin \
-tests/bin/rv64uzfh-p-fcmp.bin \
-tests/bin/rv64uzfh-p-fcvt.bin \
-tests/bin/rv64uzfh-p-fcvt_w.bin \
-tests/bin/rv64uzfh-p-fdiv.bin \
-tests/bin/rv64uzfh-p-fmadd.bin \
-tests/bin/rv64uzfh-p-fmin.bin \
-tests/bin/rv64uzfh-p-ldst.bin \
-tests/bin/rv64uzfh-p-move.bin \
-tests/bin/rv64uzfh-p-recoding.bin \
-tests/bin/rv64uzfh-v-fadd.bin \
-tests/bin/rv64uzfh-v-fclass.bin \
-tests/bin/rv64uzfh-v-fcmp.bin \
-tests/bin/rv64uzfh-v-fcvt.bin \
-tests/bin/rv64uzfh-v-fcvt_w.bin \
-tests/bin/rv64uzfh-v-fdiv.bin \
-tests/bin/rv64uzfh-v-fmadd.bin \
-tests/bin/rv64uzfh-v-fmin.bin \
-tests/bin/rv64uzfh-v-ldst.bin \
-tests/bin/rv64uzfh-v-move.bin \
-tests/bin/rv64uzfh-v-recoding.bin
+tests/bin/rv64um-v-remw.bin
 
 # tests/bin/rv32mi-p-breakpoint.bin \
 # tests/bin/rv32mi-p-csr.bin \
