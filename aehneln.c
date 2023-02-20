@@ -1432,7 +1432,10 @@ sim_sd(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sfence_vma(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)sim;
+	(void)mem;
+	/* since we walk the full page table on each access our sfence is just a
+	 * nop (there is no translation cache) */
 }
 void
 sim_sh(struct sim_ctx *sim, struct mem_ctx *mem)
