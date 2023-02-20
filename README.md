@@ -30,11 +30,13 @@ make install
 
 ```
 
-Then you can execute them with
+Then you can execute them by calling
 
 ```
 make run-riscv-tests
 ```
+
+in the root folder of the project.
 
 ## Misc
 Generating headers from riscv-opcodes
