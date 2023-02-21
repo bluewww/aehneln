@@ -69,7 +69,7 @@ mem_ctx_init(struct mem_ctx *mem)
 	if (!ram)
 		return 1;
 	/* helps debugging */
-	ram = memset(ram, 0xf, size);
+	ram = memset(ram, 0xf0, size);
 
 	mem->ram = ram;
 	mem->ram_phys_base = base;
@@ -148,18 +148,21 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 	    CSR_FIELD_READ(sim->mstatus, MSTATUS_MPRV) == 1)
 		return vaddr;
 
+	if (type == ACC_X && CSR_FIELD_READ(sim->mstatus, MSTATUS_MPRV) == 1)
+		return vaddr;
+
 	/* At this point we should either be in
 	 * MPRV=0 and prv=S/U or
-	 * MPRV=1 and prv=M/S/U and mpp=S/U
+	 * MPRV=1 and prv=M/S/U and mpp=S/U and type=r/w
 	 */
 
 	/* walk table according to privilege spec 4.3.2 */
 	uint64_t ppn = CSR_FIELD_READ(sim->satp, SATP64_PPN);
-	uint64_t addr = ppn * AEHNELN_PAGESIZE;
+	uint64_t pt = ppn * AEHNELN_PAGESIZE;
 	int level = AEHNELN_LEVELS - 1;
 
 	for (;;) {
-		uint64_t pte = mem_read64(sim, mem, addr + SV39_VPN(addr, level) * AEHNELN_PTESIZE);
+		uint64_t pte = mem_read64(sim, mem, pt + SV39_VPN(vaddr, level) * AEHNELN_PTESIZE);
 		if (sim->is_exception) {
 			/* re-raise exception */
 			exception(sim, cause_from_access(type, ACCESS));
@@ -221,10 +224,12 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 				return 0xdeadbee4;
 			}
 
-			/* check for misaligned superpage */
-			if (SV39_PPN(pte, level) != 0) {
-				exception(sim, cause_from_access(type, PAGEFAULT));
-				return 0xdeadbee4;
+			/* check for misaligned superpage (level > 0) */
+			for (int i = 0; i < level; i++) {
+				if (SV39_PPN(pte, i) != 0) {
+					exception(sim, cause_from_access(type, PAGEFAULT));
+					return 0xdeadbee4;
+				}
 			}
 
 			/* dirty and accessed check */
@@ -262,7 +267,7 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 			}
 
 			ppn = SV39_FULL_PPN(pte);
-			addr = ppn * AEHNELN_PAGESIZE;
+			pt = ppn * AEHNELN_PAGESIZE;
 		}
 	}
 
