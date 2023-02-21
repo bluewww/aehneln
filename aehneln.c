@@ -836,6 +836,10 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mie;
 		sim->mie &= ~csr_arg;
 		break;
+	case CSR_MIP:
+		REG(FIELD(RD)) = sim->mip;
+		sim->mip &= ~csr_arg;
+		break;
 	case CSR_MTVEC:
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec &= ~csr_arg;
@@ -859,6 +863,14 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
 		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
 		    sim->mstatus & ~csr_arg);
+		break;
+	case CSR_SIE:
+		REG(FIELD(RD)) = sim->sie;
+		sim->sie &= ~csr_arg;
+		break;
+	case CSR_SIP:
+		REG(FIELD(RD)) = sim->sip;
+		sim->sip &= ~csr_arg;
 		break;
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
@@ -965,6 +977,10 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mie;
 		sim->mie |= csr_arg;
 		break;
+	case CSR_MIP:
+		REG(FIELD(RD)) = sim->mip;
+		sim->mip |= csr_arg;
+		break;
 	case CSR_MTVEC:
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec |= csr_arg;
@@ -988,6 +1004,14 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
 		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK,
 		    sim->mstatus | csr_arg);
+		break;
+	case CSR_SIE:
+		REG(FIELD(RD)) = sim->sie;
+		sim->sie |= csr_arg;
+		break;
+	case CSR_SIP:
+		REG(FIELD(RD)) = sim->sip;
+		sim->sip |= csr_arg;
 		break;
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
@@ -1091,6 +1115,10 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mie;
 		sim->mie = csr_arg;
 		break;
+	case CSR_MIP:
+		REG(FIELD(RD)) = sim->mip;
+		sim->mip = csr_arg;
+		break;
 	case CSR_MTVEC:
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec = csr_arg;
@@ -1113,6 +1141,14 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
 		sim->mstatus = WRITE_PRESERVE_BITS(sim->mstatus, SSTATUS_WMASK, csr_arg);
+		break;
+	case CSR_SIE:
+		REG(FIELD(RD)) = sim->sie;
+		sim->sie = csr_arg;
+		break;
+	case CSR_SIP:
+		REG(FIELD(RD)) = sim->sip;
+		sim->sip = csr_arg;
 		break;
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
