@@ -629,95 +629,91 @@ sim_addw(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_amoadd_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) + GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) + GET_REG(FIELD(RS2)));
 }
 void
 sim_amoadd_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) + GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) + GET_REG(FIELD(RS2)));
 }
 
 void
 sim_amoand_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) & GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) & GET_REG(FIELD(RS2)));
 }
 void
 sim_amoand_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) & GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) & GET_REG(FIELD(RS2)));
 }
 void
 sim_amomax_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = (int64_t)val > (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)),
+	    MAX((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
 void
 sim_amomax_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = SEXT((int64_t)val > (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)),
+	    MAX((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
 void
 sim_amomaxu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = val > GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), MAX(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amomaxu_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = SEXT(val > GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), MAX(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amomin_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = (int64_t)val < (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)),
+	    MIN((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
 void
 sim_amomin_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = SEXT((int64_t)val < (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)),
+	    MIN((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
 void
 sim_amominu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = val < GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), MIN(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amominu_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
-	REG(FIELD(RD)) = SEXT(val < GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), MIN(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amoor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) | GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) | GET_REG(FIELD(RS2)));
 }
 void
 sim_amoor_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) | GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) | GET_REG(FIELD(RS2)));
 }
 void
 sim_amoswap_d(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -734,14 +730,14 @@ sim_amoswap_w(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_amoxor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) ^ GET_REG(FIELD(RS2));
-	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) ^ GET_REG(FIELD(RS2)));
 }
 void
 sim_amoxor_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) ^ GET_REG(FIELD(RS2)), 32);
-	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) ^ GET_REG(FIELD(RS2)));
 }
 void
 sim_and(struct sim_ctx *sim, struct mem_ctx *mem)

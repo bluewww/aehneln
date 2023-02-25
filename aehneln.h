@@ -152,6 +152,10 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 #define INSN_FIELD(NAME, VAL) ((VAL & INSN_FIELD_##NAME) >> INSN_FIELD_OFFSET_##NAME)
 #define RV_X(x, s, n) (((x) >> (s)) & ((1 << (n)) - 1))
 
+/* generic */
+#define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
+
 /* Bit manipulation */
 /* sign extend form any bit. Note that bits position start counting from one
  * (and not zero) */
