@@ -633,10 +633,23 @@ sim_amoadd_d(struct sim_ctx *sim, struct mem_ctx *mem)
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
+sim_amoadd_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) + GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+
+void
 sim_amoand_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) & GET_REG(FIELD(RS2));
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
+sim_amoand_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) & GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
 sim_amomax_d(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -646,11 +659,25 @@ sim_amomax_d(struct sim_ctx *sim, struct mem_ctx *mem)
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
+sim_amomax_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
+	REG(FIELD(RD)) = SEXT((int64_t)val > (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
 sim_amomaxu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
 	REG(FIELD(RD)) = val > GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
+sim_amomaxu_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
+	REG(FIELD(RD)) = SEXT(val > GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
 sim_amomin_d(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -660,11 +687,25 @@ sim_amomin_d(struct sim_ctx *sim, struct mem_ctx *mem)
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
+sim_amomin_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
+	REG(FIELD(RD)) = SEXT((int64_t)val < (int64_t)GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
 sim_amominu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
 	REG(FIELD(RD)) = val < GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2));
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
+sim_amominu_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)));
+	REG(FIELD(RD)) = SEXT(val < GET_REG(FIELD(RS2)) ? val : GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
 sim_amoor_d(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -673,16 +714,34 @@ sim_amoor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
+sim_amoor_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) | GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
 sim_amoswap_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RS2)));
 }
 void
+sim_amoswap_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RS2)));
+}
+void
 sim_amoxor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1))) ^ GET_REG(FIELD(RS2));
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
+}
+void
+sim_amoxor_w(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))) ^ GET_REG(FIELD(RS2)), 32);
+	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)));
 }
 void
 sim_and(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1225,6 +1284,16 @@ sim_csrrwi(struct sim_ctx *sim, struct mem_ctx *mem)
 	csrrw_generic(sim, csr_val, csr_arg);
 }
 void
+sim_div(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_divu(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
 sim_divuw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	SIM_UNIMPLEMENTED();
@@ -1373,9 +1442,13 @@ sim_lhu(struct sim_ctx *sim, struct mem_ctx *mem)
 	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
 		REG(FIELD(RD)) = val;
 }
-
 void
 sim_lr_d(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_lr_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	SIM_UNIMPLEMENTED();
 }
@@ -1429,7 +1502,26 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 	/* now return */
 	sim->pc_next = sim->mepc;
 }
-
+void
+sim_mul(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_mulh(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_mulhsu(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_mulhu(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
 void
 sim_mulw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
@@ -1455,6 +1547,16 @@ sim_pause(struct sim_ctx *sim, struct mem_ctx *mem)
 	/* nop */
 }
 void
+sim_rem(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_remu(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
 sim_remuw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	SIM_UNIMPLEMENTED();
@@ -1472,6 +1574,11 @@ sim_sb(struct sim_ctx *sim, struct mem_ctx *mem)
 }
 void
 sim_sc_d(struct sim_ctx *sim, struct mem_ctx *mem)
+{
+	SIM_UNIMPLEMENTED();
+}
+void
+sim_sc_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	SIM_UNIMPLEMENTED();
 }
