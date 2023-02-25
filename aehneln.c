@@ -1441,12 +1441,32 @@ sim_lhu(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_lr_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	if (GET_REG(FIELD(RS1)) & 7) {
+		exception(sim, CAUSE_MISALIGNED_LOAD);
+		return;
+	}
+
+	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS)) {
+		REG(FIELD(RD)) = val;
+		sim->reserved = true;
+		sim->reserved_addr = GET_REG(FIELD(RS1));
+	}
 }
 void
 sim_lr_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	if (GET_REG(FIELD(RS1)) & 3) {
+		exception(sim, CAUSE_MISALIGNED_LOAD);
+		return;
+	}
+
+	uint64_t val = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS)) {
+		REG(FIELD(RD)) = val;
+		sim->reserved = true;
+		sim->reserved_addr = GET_REG(FIELD(RS1));
+	}
 }
 void
 sim_lui(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1571,12 +1591,43 @@ sim_sb(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sc_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	if (GET_REG(FIELD(RS1)) & 7) {
+		exception(sim, CAUSE_MISALIGNED_STORE);
+		return;
+	}
+
+	/* TODO: For implementations with both page-based virtual memory and the
+	 * “A” standard extension, the LR/SC reservation set must lie completely within a
+	 * single base page (i.e., a naturally aligned 4 KiB region). (privileged spec 4.3.1)*/
+	if (sim->reserved_addr == GET_REG(FIELD(RS1))) {
+		mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), (uint64_t)GET_REG(FIELD(RS2)));
+		REG(FIELD(RD)) = 0;
+	} else {
+		REG(FIELD(RD)) = 1;
+	}
+
+	/* no matter what invalidate reservations */
+	sim->reserved = false;
+	sim->reserved_addr = 0;
 }
 void
 sim_sc_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	if (GET_REG(FIELD(RS1)) & 3) {
+		exception(sim, CAUSE_MISALIGNED_STORE);
+		return;
+	}
+
+	if (sim->reserved_addr == GET_REG(FIELD(RS1))) {
+		mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), (uint32_t)GET_REG(FIELD(RS2)));
+		REG(FIELD(RD)) = 0;
+	} else {
+		REG(FIELD(RD)) = 1;
+	}
+
+	/* no matter what invalidate reservations */
+	sim->reserved = false;
+	sim->reserved_addr = 0;
 }
 void
 sim_sd(struct sim_ctx *sim, struct mem_ctx *mem)

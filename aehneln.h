@@ -72,6 +72,8 @@ struct sim_ctx {
 	uint64_t generic_cause; /* generic cause. Holds exception cause before
 				 * delegation logic causes it to be written to mcause or
 				 * scause */
+	bool reserved;		/* single reservation station for lr/sc. This could be optimized. */
+	uint64_t reserved_addr;
 };
 
 struct mem_ctx {
