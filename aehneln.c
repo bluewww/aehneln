@@ -912,6 +912,9 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec &= ~csr_arg;
 		break;
+	case CSR_MTVAL:
+		REG(FIELD(RD)) = 0;
+		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
 		sim->mepc &= ~csr_arg;
@@ -943,6 +946,9 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
 		sim->stvec &= ~csr_arg;
+		break;
+	case CSR_STVAL:
+		REG(FIELD(RD)) = 0;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
@@ -1053,6 +1059,9 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec |= csr_arg;
 		break;
+	case CSR_MTVAL:
+		REG(FIELD(RD)) = 0;
+		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
 		sim->mepc |= csr_arg;
@@ -1084,6 +1093,9 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
 		sim->stvec |= csr_arg;
+		break;
+	case CSR_STVAL:
+		REG(FIELD(RD)) = 0;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
@@ -1191,6 +1203,9 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		REG(FIELD(RD)) = sim->mtvec & ~3;
 		sim->mtvec = csr_arg;
 		break;
+	case CSR_MTVAL:
+		REG(FIELD(RD)) = 0;
+		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
 		sim->mepc = csr_arg;
@@ -1221,6 +1236,9 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_STVEC:
 		REG(FIELD(RD)) = sim->stvec & ~3;
 		sim->stvec = csr_arg;
+		break;
+	case CSR_STVAL:
+		REG(FIELD(RD)) = 0;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
