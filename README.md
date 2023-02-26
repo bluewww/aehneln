@@ -1,5 +1,7 @@
 # Aehneln
-Simple RISC-V rv64ima simulator.
+Simple RISC-V rv64ima\_zicsr\_zifencei emulator.
+
+The goal is run a minimal Linux distribution but we are still not there yet.
 
 ## Setup
 
@@ -41,5 +43,5 @@ in the root folder of the project.
 Generating headers from riscv-opcodes
 
 ```
-make EXTENSIONS=rv*_i rv64_m rv64_a rv64_f rv64_d rv64_c rv_zicsr rv_zifencei rv_s rv_system
+make EXTENSIONS="rv*_i rv*_m rv*_a rv_zicsr rv_zifencei rv_s rv_system" everything
 ```
