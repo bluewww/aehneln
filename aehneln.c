@@ -55,7 +55,7 @@ map_binary(struct elf *elf, char *name)
 }
 
 int
-mem_ctx_init(struct mem_ctx *mem)
+mem_ctx_init(struct mem_ctx *mem, int c)
 {
 	assert(mem);
 
@@ -68,8 +68,10 @@ mem_ctx_init(struct mem_ctx *mem)
 	char *ram = malloc(size);
 	if (!ram)
 		return 1;
-	/* helps debugging */
-	ram = memset(ram, 0xf0, size);
+	/* TODO: some tests fail if uninitialized memory doesn't return 0. This
+	 * is because we don't have the bss section initialized if we use c !=
+	 * 0. Implement a proper elf loader. */
+	ram = memset(ram, c, size);
 
 	mem->ram = ram;
 	mem->ram_phys_base = base;
@@ -1961,7 +1963,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 		if (sim->is_exception && sim->priv <= PRV_S &&
 		    ((sim->medeleg >> sim->generic_cause) & 1)) {
 			if (sim->trace & AEHNELN_TRACE_EXCEPTIONS)
-				printf("exception to supervisor mode: %ld\n", sim->generic_cause);
+				printf("exception to supervisor mode: %ld tval: 0x%016" PRIx64 "\n",
+				    sim->generic_cause, sim->generic_tval);
 			/* take exception in supervisor mode (riscv-privileged 3.1.8) */
 			int sie = CSR_FIELD_READ(sim->mstatus, SSTATUS_SIE);
 			/* save previous int state */
@@ -2037,11 +2040,13 @@ main(int argc, char *argv[])
 {
 	int c;
 	int trace = false;
+	bool poison = false;
 
 	while (1) {
 		__attribute__((unused)) int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 		static struct option long_options[] = {
+			{ "poison-mem", no_argument, 0, 'p' },
 			{ "trace", no_argument, 0, 'd' },
 			{ "trace-vm", no_argument, 0, 'k' },
 			{ "help", no_argument, 0, 'h' },
@@ -2053,6 +2058,10 @@ main(int argc, char *argv[])
 
 		switch (c) {
 		case 0:
+			break;
+
+		case 'p':
+			poison = true;
 			break;
 
 		case 'd':
@@ -2099,7 +2108,7 @@ main(int argc, char *argv[])
 	struct mem_ctx mem = { 0 };
 
 	/* initialize physical memory */
-	err = mem_ctx_init(&mem);
+	err = mem_ctx_init(&mem, poison ? 0xde : 0x00);
 	if (err) {
 		fprintf(stderr, "mem_ctx_init()\n");
 		return EXIT_FAILURE;

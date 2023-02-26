@@ -90,7 +90,7 @@ struct mem_ctx {
 
 void asim(struct sim_ctx *sim, struct mem_ctx *mem);
 
-int mem_ctx_init(struct mem_ctx *mem);
+int mem_ctx_init(struct mem_ctx *mem, int c);
 
 uint32_t mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr);
 uint64_t mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr);
