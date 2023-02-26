@@ -10,7 +10,7 @@
 #define MEM_RAM_BASE 0x80000000
 #define MEM_TOHOST 0x80001000
 
-struct elf {
+struct bin {
 	char *bytes;
 	uint64_t size;
 };

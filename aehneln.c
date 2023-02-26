@@ -31,13 +31,13 @@ print_usage(void)
 
 /* map binary file into host system memory */
 void
-map_binary(struct elf *elf, char *name)
+map_binary(struct bin *bin, char *name)
 {
 	struct stat sb = { 0 };
 	off_t pa_offset = 0;
 	char *addr = NULL;
 
-	/* mmap elf file into memory */
+	/* mmap bin file into memory */
 	int fd = open(name, O_RDONLY);
 	if (fd == -1)
 		handle_error("open");
@@ -50,8 +50,8 @@ map_binary(struct elf *elf, char *name)
 		handle_error("mmap");
 
 	close(fd);
-	elf->bytes = addr;
-	elf->size = sb.st_size;
+	bin->bytes = addr;
+	bin->size = sb.st_size;
 }
 
 int
@@ -81,17 +81,17 @@ mem_ctx_init(struct mem_ctx *mem, int c)
 }
 
 int
-mem_ctx_copy_elf(struct mem_ctx *mem, char *elf, uint64_t base, uint64_t size)
+mem_ctx_copy_bin(struct mem_ctx *mem, char *bin, uint64_t base, uint64_t size)
 {
 	assert(mem);
-	assert(elf);
+	assert(bin);
 
 	if (base < mem->ram_phys_base)
 		return 1;
 	if (base + size >= mem->ram_phys_base + mem->ram_phys_size)
 		return 1;
 
-	memcpy(mem->ram, elf, size);
+	memcpy(mem->ram, bin, size);
 
 	return 0;
 }
@@ -2231,10 +2231,10 @@ main(int argc, char *argv[])
 		}
 	}
 
-	char *elf_name = NULL;
+	char *bin_name = NULL;
 	if (argc - optind == 1) {
 		printf("opening %s ...\n", argv[optind]);
-		elf_name = argv[optind];
+		bin_name = argv[optind];
 	} else if (argc - optind >= 1) {
 		fprintf(stderr, "too many arguments\n");
 		print_usage();
@@ -2245,9 +2245,9 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	/* load elf */
-	struct elf elf = { 0 };
-	map_binary(&elf, elf_name);
+	/* load bin */
+	struct bin bin = { 0 };
+	map_binary(&bin, bin_name);
 
 	int err;
 	struct mem_ctx mem = { 0 };
@@ -2259,10 +2259,10 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	err = mem_ctx_copy_elf(&mem, elf.bytes, MEM_RAM_BASE, elf.size);
+	err = mem_ctx_copy_bin(&mem, bin.bytes, MEM_RAM_BASE, bin.size);
 
 	if (err) {
-		fprintf(stderr, "mem_ctx_copy_elf()\n");
+		fprintf(stderr, "mem_ctx_copy_bin()\n");
 		return EXIT_FAILURE;
 	}
 
