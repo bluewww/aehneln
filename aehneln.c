@@ -95,10 +95,11 @@ mem_ctx_copy_elf(struct mem_ctx *mem, char *elf, uint64_t base, uint64_t size)
 }
 
 static void
-exception(struct sim_ctx *sim, uint64_t cause)
+exception(struct sim_ctx *sim, uint64_t cause, uint64_t tval)
 {
 	sim->is_exception = true;
 	sim->generic_cause = cause;
+	sim->generic_tval = tval;
 }
 
 static int
@@ -161,18 +162,25 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 	uint64_t pt = ppn * AEHNELN_PAGESIZE;
 	int level = AEHNELN_LEVELS - 1;
 
+	if (sim->trace & AEHNELN_TRACE_TRANSLATION)
+		printf("%s: start translation of va=0x%016" PRIx64 " type=%d\n", __func__, vaddr,
+		    type);
+
 	for (;;) {
 		uint64_t pte = mem_read64(sim, mem, pt + SV39_VPN(vaddr, level) * AEHNELN_PTESIZE);
+		if (sim->trace & AEHNELN_TRACE_TRANSLATION)
+			printf("%s: reading 0x%016" PRIx64 " -> pte=0x%016" PRIx64 " at level=%d\n",
+			    __func__, pt + SV39_VPN(vaddr, level) * AEHNELN_PTESIZE, pte, level);
 		if (sim->is_exception) {
 			/* re-raise exception */
-			exception(sim, cause_from_access(type, ACCESS));
+			exception(sim, cause_from_access(type, ACCESS), vaddr);
 			return pte;
 		}
 
 		if (REG_FIELD_READ(pte, PTE_V) == 0 ||
 		    (REG_FIELD_READ(pte, PTE_R) == 0 && REG_FIELD_READ(pte, PTE_W) == 1) ||
 		    (REG_FIELD_READ(pte, PTE_RSVD))) {
-			exception(sim, cause_from_access(type, PAGEFAULT));
+			exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 			return 0xdeadbee1;
 		}
 
@@ -187,7 +195,7 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 			switch (effective_priv) {
 			case PRV_U:
 				if (REG_FIELD_READ(pte, PTE_U) == 0) {
-					exception(sim, cause_from_access(type, PAGEFAULT));
+					exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 					return 0xdeadbee4;
 				}
 				break;
@@ -195,12 +203,12 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 				/* supervisor can't access usermode pages when SUM is clear */
 				if (REG_FIELD_READ(pte, PTE_U) == 1 &&
 				    CSR_FIELD_READ(sim->mstatus, MSTATUS_SUM) == 0) {
-					exception(sim, cause_from_access(type, PAGEFAULT));
+					exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 					return 0xdeadbee4;
 				}
 				/* supervisor maybe never execute usermode pages */
 				if (REG_FIELD_READ(pte, PTE_U) == 1 && type == ACC_X) {
-					exception(sim, cause_from_access(type, PAGEFAULT));
+					exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 					return 0xdeadbee4;
 				}
 				break;
@@ -216,18 +224,18 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 			if (effective_priv == PRV_M && type == ACC_R &&
 			    CSR_FIELD_READ(sim->mstatus, MSTATUS_MXR) == 1 && !pte_rw) {
 				/* MXR privilege spec 3.1.6.3 */
-				exception(sim, cause_from_access(type, PAGEFAULT));
+				exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 				return 0xdeadbee4;
 			} else if (!REG_FIELD_READ(pte, pte_access_from_access(type))) {
 				/* regular rwx check */
-				exception(sim, cause_from_access(type, PAGEFAULT));
+				exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 				return 0xdeadbee4;
 			}
 
 			/* check for misaligned superpage (level > 0) */
 			for (int i = 0; i < level; i++) {
 				if (SV39_PPN(pte, i) != 0) {
-					exception(sim, cause_from_access(type, PAGEFAULT));
+					exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 					return 0xdeadbee4;
 				}
 			}
@@ -235,7 +243,7 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 			/* dirty and accessed check */
 			if (REG_FIELD_READ(pte, PTE_A) == 0 ||
 			    (type == ACC_W && REG_FIELD_READ(pte, PTE_D) == 0)) {
-				exception(sim, cause_from_access(type, PAGEFAULT));
+				exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 				return 0xdeadbee5;
 			}
 
@@ -257,12 +265,16 @@ ptwalk_sv39(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, enum acces
 			paddr <<= AEHNELN_PAGEOFFSET;
 			paddr |= vaddr & GENMASK(AEHNELN_PAGEOFFSET);
 
+			if (sim->trace & AEHNELN_TRACE_TRANSLATION)
+				printf("%s: return va=0x%016" PRIx64 " -> pa=0x%016" PRIx64 "\n",
+				    __func__, vaddr, paddr);
+
 			return paddr;
 		} else {
 			/* go to next level */
 			level = level - 1;
 			if (level < 0) {
-				exception(sim, cause_from_access(type, PAGEFAULT));
+				exception(sim, cause_from_access(type, PAGEFAULT), vaddr);
 				return 0xdeadbee2;
 			}
 
@@ -281,7 +293,13 @@ mem_insn_vread(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
 	if (sim->is_exception)
 		return 0xdeadbeef;
 
-	return mem_insn_read(sim, mem, paddr);
+	uint32_t data = mem_insn_read(sim, mem, paddr);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_FETCH_ACCESS, vaddr);
+	}
+
+	return data;
 }
 
 uint64_t
@@ -291,7 +309,13 @@ mem_vread64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
 	if (sim->is_exception)
 		return 0xdeadbeefdeadbeef;
 
-	return mem_read64(sim, mem, paddr);
+	uint64_t data = mem_read64(sim, mem, paddr);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_LOAD_ACCESS, vaddr);
+	}
+
+	return data;
 }
 
 uint32_t
@@ -301,7 +325,13 @@ mem_vread32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
 	if (sim->is_exception)
 		return 0xdeadbeef;
 
-	return mem_read32(sim, mem, paddr);
+	uint32_t data = mem_read32(sim, mem, paddr);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_LOAD_ACCESS, vaddr);
+	}
+
+	return data;
 }
 
 uint16_t
@@ -311,7 +341,13 @@ mem_vread16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
 	if (sim->is_exception)
 		return 0xdead;
 
-	return mem_read16(sim, mem, paddr);
+	uint16_t data = mem_read16(sim, mem, paddr);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_LOAD_ACCESS, vaddr);
+	}
+
+	return data;
 }
 
 uint8_t
@@ -321,7 +357,13 @@ mem_vread8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr)
 	if (sim->is_exception)
 		return 0x0;
 
-	return mem_read8(sim, mem, paddr);
+	uint8_t data = mem_read8(sim, mem, paddr);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_LOAD_ACCESS, vaddr);
+	}
+
+	return data;
 }
 
 void
@@ -331,7 +373,11 @@ mem_vwrite64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint64_t 
 	if (sim->is_exception)
 		return;
 
-	return mem_write64(sim, mem, paddr, data);
+	mem_write64(sim, mem, paddr, data);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_STORE_ACCESS, vaddr);
+	}
 }
 
 void
@@ -341,7 +387,11 @@ mem_vwrite32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint32_t 
 	if (sim->is_exception)
 		return;
 
-	return mem_write32(sim, mem, paddr, data);
+	mem_write32(sim, mem, paddr, data);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_STORE_ACCESS, vaddr);
+	}
 }
 
 void
@@ -351,7 +401,11 @@ mem_vwrite16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint16_t 
 	if (sim->is_exception)
 		return;
 
-	return mem_write16(sim, mem, paddr, data);
+	mem_write16(sim, mem, paddr, data);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_STORE_ACCESS, vaddr);
+	}
 }
 
 void
@@ -361,17 +415,20 @@ mem_vwrite8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint8_t da
 	if (sim->is_exception)
 		return;
 
-	return mem_write8(sim, mem, paddr, data);
+	mem_write8(sim, mem, paddr, data);
+	if (sim->bus_exception) {
+		sim->bus_exception = false;
+		exception(sim, CAUSE_STORE_ACCESS, vaddr);
+	}
 }
 
 uint32_t
 mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exception(sim, CAUSE_FETCH_ACCESS);
+		sim->bus_exception = true;
 		return 0xdeadbeef;
 	}
 	uint32_t data;
@@ -387,11 +444,10 @@ mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint64_t
 mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exception(sim, CAUSE_LOAD_ACCESS);
+		sim->bus_exception = true;
 		return 0xdeadbeef;
 	}
 
@@ -407,11 +463,10 @@ mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint32_t
 mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exception(sim, CAUSE_LOAD_ACCESS);
+		sim->bus_exception = true;
 		return 0xdeadbeef;
 	}
 	uint32_t data;
@@ -426,11 +481,10 @@ mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint16_t
 mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exception(sim, CAUSE_LOAD_ACCESS);
+		sim->bus_exception = true;
 		return 0xbeef;
 	}
 	uint16_t data;
@@ -445,11 +499,10 @@ mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint8_t
 mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		exception(sim, CAUSE_LOAD_ACCESS);
+		sim->bus_exception = true;
 		return 0xff;
 	}
 	uint8_t data;
@@ -461,20 +514,34 @@ mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	return data;
 }
 
+/* sifive tohost protocol according to vm.c */
+static void
+decode_tohost(uint64_t data)
+{
+	/* cputchar */
+	if ((data >> 8) == (0x0101000000000000 >> 8)) {
+		putchar(data & 0xff);
+	} else {
+		fprintf(stderr, "tohost: exit with 0x%lx\n", data);
+		/* just exit */
+		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+	}
+}
+
 void
 mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t data)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n",
 			    addr, data);
-		exception(sim, CAUSE_STORE_ACCESS);
+		sim->bus_exception = true;
 		return;
 	}
+
 	if (addr == MEM_TOHOST) {
-		fprintf(stderr, "tohost: exit with %ld\n", data);
-		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+		decode_tohost(data);
+		return;
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 8);
@@ -486,18 +553,17 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 void
 mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t data)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%08" PRIx32 "\n",
 			    addr, data);
-		exception(sim, CAUSE_STORE_ACCESS);
+		sim->bus_exception = true;
 		return;
 	}
 
 	if (addr == MEM_TOHOST) {
-		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+		decode_tohost(data);
+		return;
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 4);
@@ -509,18 +575,17 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 void
 mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t data)
 {
-	/* TODO: I/O devices */
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%04" PRIx16 "\n",
 			    addr, data);
-		exception(sim, CAUSE_STORE_ACCESS);
+		sim->bus_exception = true;
 		return;
 	}
 
 	if (addr == MEM_TOHOST) {
-		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+		decode_tohost(data);
+		return;
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 2);
@@ -537,13 +602,13 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 		if (sim->trace & AEHNELN_TRACE_MEM)
 			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%02" PRIx8 "\n",
 			    addr, data);
-		exception(sim, CAUSE_STORE_ACCESS);
+		sim->bus_exception = true;
 		return;
 	}
 
 	if (addr == MEM_TOHOST) {
-		fprintf(stderr, "tohost: exit with %d\n", data);
-		exit(data == 1 ? EXIT_SUCCESS : EXIT_FAILURE);
+		decode_tohost(data);
+		return;
 	}
 
 	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 1);
@@ -913,7 +978,8 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mtvec &= ~csr_arg;
 		break;
 	case CSR_MTVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->mtval;
+		sim->mtval &= ~csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
@@ -948,7 +1014,8 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->stvec &= ~csr_arg;
 		break;
 	case CSR_STVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->stval;
+		sim->stval &= ~csr_arg;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
@@ -971,7 +1038,7 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		break;
 	}
 }
@@ -985,7 +1052,7 @@ sim_csrrc(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1001,7 +1068,7 @@ sim_csrrci(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1060,7 +1127,8 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mtvec |= csr_arg;
 		break;
 	case CSR_MTVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->mtval;
+		sim->mtval |= csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
@@ -1095,7 +1163,8 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->stvec |= csr_arg;
 		break;
 	case CSR_STVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->stval;
+		sim->stval |= csr_arg;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
@@ -1118,7 +1187,7 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		break;
 	}
 }
@@ -1132,7 +1201,7 @@ sim_csrrs(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr*/
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1147,7 +1216,7 @@ sim_csrrsi(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || (FIELD(RS1) != 0 && CSR_READONLY(csr_val))) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1204,7 +1273,8 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->mtvec = csr_arg;
 		break;
 	case CSR_MTVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->mtval;
+		sim->mtval = csr_arg;
 		break;
 	case CSR_MEPC:
 		REG(FIELD(RD)) = sim->mepc;
@@ -1238,7 +1308,8 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		sim->stvec = csr_arg;
 		break;
 	case CSR_STVAL:
-		REG(FIELD(RD)) = 0;
+		REG(FIELD(RD)) = sim->stval;
+		sim->stval = csr_arg;
 		break;
 	case CSR_SEPC:
 		REG(FIELD(RD)) = sim->sepc;
@@ -1261,7 +1332,7 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	default:
 		if (sim->trace & AEHNELN_TRACE_UNKNOWN_CSR)
 			fprintf(stderr, "unknown csr 0x%03" PRIx32 "\n", U_ITYPE_IMM(sim->insn));
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		break;
 	}
 }
@@ -1275,7 +1346,7 @@ sim_csrrw(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1291,7 +1362,7 @@ sim_csrrwi(struct sim_ctx *sim, struct mem_ctx *mem)
 
 	/* we don't have enough privileges or we write to a read-only csr */
 	if (!(sim->priv >= CSR_PRIV_LVL(csr_val)) || CSR_READONLY(csr_val)) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 
@@ -1327,7 +1398,7 @@ void
 sim_ebreak(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	exception(sim, CAUSE_BREAKPOINT);
+	exception(sim, CAUSE_BREAKPOINT, sim->pc);
 }
 void
 sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1335,11 +1406,11 @@ sim_ecall(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	/* transition to machine mode */
 	if (sim->priv == PRV_M)
-		exception(sim, CAUSE_MACHINE_ECALL);
+		exception(sim, CAUSE_MACHINE_ECALL, 0);
 	else if (sim->priv == PRV_S)
-		exception(sim, CAUSE_SUPERVISOR_ECALL);
+		exception(sim, CAUSE_SUPERVISOR_ECALL, 0);
 	else if (sim->priv == PRV_U)
-		exception(sim, CAUSE_USER_ECALL);
+		exception(sim, CAUSE_USER_ECALL, 0);
 }
 
 void
@@ -1460,7 +1531,7 @@ void
 sim_lr_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	if (GET_REG(FIELD(RS1)) & 7) {
-		exception(sim, CAUSE_MISALIGNED_LOAD);
+		exception(sim, CAUSE_MISALIGNED_LOAD, GET_REG(FIELD(RS1)));
 		return;
 	}
 
@@ -1475,7 +1546,7 @@ void
 sim_lr_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	if (GET_REG(FIELD(RS1)) & 3) {
-		exception(sim, CAUSE_MISALIGNED_LOAD);
+		exception(sim, CAUSE_MISALIGNED_LOAD, GET_REG(FIELD(RS1)));
 		return;
 	}
 
@@ -1513,7 +1584,7 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	/* mret works only in m-mode */
 	if (!(sim->priv >= PRV_M)) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 	/* Privilege mode updates according to privileged spec 3.3.2
@@ -1610,7 +1681,7 @@ void
 sim_sc_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	if (GET_REG(FIELD(RS1)) & 7) {
-		exception(sim, CAUSE_MISALIGNED_STORE);
+		exception(sim, CAUSE_MISALIGNED_STORE, GET_REG(FIELD(RS1)));
 		return;
 	}
 
@@ -1632,7 +1703,7 @@ void
 sim_sc_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	if (GET_REG(FIELD(RS1)) & 3) {
-		exception(sim, CAUSE_MISALIGNED_STORE);
+		exception(sim, CAUSE_MISALIGNED_STORE, GET_REG(FIELD(RS1)));
 		return;
 	}
 
@@ -1751,7 +1822,7 @@ sim_sret(struct sim_ctx *sim, struct mem_ctx *mem)
 	(void)mem;
 	/* sret works in m-mode and s-mode. privileged-spec 3.3.2 and 3.1.6.1 */
 	if (!(sim->priv >= PRV_S) || CSR_FIELD_READ(sim->mstatus, MSTATUS_TSR)) {
-		exception(sim, CAUSE_ILLEGAL_INSTRUCTION);
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		return;
 	}
 	/* Privilege mode updates according to privileged spec 3.3.2
@@ -1849,8 +1920,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 	for (;;) {
 		uint32_t insn = mem_insn_vread(sim, mem, sim->pc);
 		if (sim->trace & AEHNELN_TRACE_INSN)
-			printf("priv=%d pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n", sim->priv,
-			    sim->pc, insn);
+			printf("%s: priv=%d pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n", __func__,
+			    sim->priv, sim->pc, insn);
 #define __riscv_xlen 64
 #define DECLARE_INSN(fun, match, mask)   \
 	else if ((insn & mask) == match) \
@@ -1875,6 +1946,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			fprintf(stderr,
 			    "oops illegal instruction pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n",
 			    sim->pc, insn);
+			/* TODO: make this a real illegal instruction instead of stopping simulation
+			 */
 			exit(EXIT_FAILURE);
 		}
 #undef DECLARE_INSN
@@ -1885,6 +1958,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 		/* update pc according to machine state (normal, exception, interrupt) */
 		if (sim->is_exception && sim->priv <= PRV_S &&
 		    ((sim->medeleg >> sim->generic_cause) & 1)) {
+			if (sim->trace & AEHNELN_TRACE_EXCEPTIONS)
+				printf("exception to supervisor mode: %ld\n", sim->generic_cause);
 			/* take exception in supervisor mode (riscv-privileged 3.1.8) */
 			int sie = CSR_FIELD_READ(sim->mstatus, SSTATUS_SIE);
 			/* save previous int state */
@@ -1897,6 +1972,7 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			sim->priv = PRV_S;
 			sim->sepc = sim->pc;
 			sim->scause = sim->generic_cause;
+			sim->stval = sim->generic_tval;
 			sim->is_exception = false;
 
 			if ((sim->trace & AEHNELN_TRACE_ILLEGAL) &&
@@ -1916,6 +1992,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			}
 
 		} else if (sim->is_exception) {
+			if (sim->trace & AEHNELN_TRACE_EXCEPTIONS)
+				printf("exception to machine mode: %ld\n", sim->generic_cause);
 			/* take exception in machine mode (riscv-privileged 3.1.6.1) */
 			int mie = CSR_FIELD_READ(sim->mstatus, MSTATUS_MIE);
 			/* save previous int state */
@@ -1928,6 +2006,7 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			sim->priv = PRV_M;
 			sim->mepc = sim->pc;
 			sim->mcause = sim->generic_cause;
+			sim->mtval = sim->generic_tval;
 			sim->is_exception = false;
 
 			if ((sim->trace & AEHNELN_TRACE_ILLEGAL) &&
@@ -1962,6 +2041,7 @@ main(int argc, char *argv[])
 		int option_index = 0;
 		static struct option long_options[] = {
 			{ "trace", no_argument, 0, 'd' },
+			{ "trace-vm", no_argument, 0, 'k' },
 			{ "help", no_argument, 0, 'h' },
 		};
 
@@ -1978,6 +2058,11 @@ main(int argc, char *argv[])
 			trace |= AEHNELN_TRACE_MEM;
 			trace |= AEHNELN_TRACE_ILLEGAL;
 			trace |= AEHNELN_TRACE_UNKNOWN_CSR;
+			trace |= AEHNELN_TRACE_EXCEPTIONS;
+			break;
+
+		case 'k':
+			trace |= AEHNELN_TRACE_TRANSLATION;
 			break;
 
 		case 'h':

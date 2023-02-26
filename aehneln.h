@@ -19,6 +19,8 @@ struct elf {
 #define AEHNELN_TRACE_MEM (1 << 1)
 #define AEHNELN_TRACE_ILLEGAL (1 << 2)
 #define AEHNELN_TRACE_UNKNOWN_CSR (1 << 3)
+#define AEHNELN_TRACE_TRANSLATION (1 << 4)
+#define AEHNELN_TRACE_EXCEPTIONS (1 << 5)
 
 #define AEHNELN_PAGESIZE 4096
 #define AEHNELN_PAGEOFFSET 12
@@ -72,6 +74,10 @@ struct sim_ctx {
 	uint64_t generic_cause; /* generic cause. Holds exception cause before
 				 * delegation logic causes it to be written to mcause or
 				 * scause */
+	uint64_t generic_tval;  /* generic trap value to be mapped into stval or mtval */
+
+	bool bus_exception; /* memory bus generated access exception */
+
 	bool reserved;		/* single reservation station for lr/sc. This could be optimized. */
 	uint64_t reserved_addr;
 };
