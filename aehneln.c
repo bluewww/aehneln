@@ -1880,7 +1880,9 @@ sim_sub(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_subw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) - GET_REG(FIELD(RS2));
+	REG(FIELD(RD)) = SEXT(GET_REG(FIELD(RD)), 32);
 }
 void
 sim_sw(struct sim_ctx *sim, struct mem_ctx *mem)
