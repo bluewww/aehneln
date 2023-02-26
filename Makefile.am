@@ -7,7 +7,7 @@ aehneln_LDADD = @LIBELF_LIBS@
 AM_CFLAGS = -std=gnu11 -Wall -Wextra
 
 tests/bin/%.bin: tests/riscv/target/share/riscv-tests/isa/%
-	riscv64-elf-objcopy -O binary $^ $@
+	mv $^ $@
 
 run-riscv-tests: riscv-tests
 	for f in tests/bin/*.bin; do ./aehneln $$f; done

@@ -22,6 +22,8 @@ struct bin {
 #define AEHNELN_TRACE_TRANSLATION (1 << 4)
 #define AEHNELN_TRACE_EXCEPTIONS (1 << 5)
 
+#define AEHNELN_DEBUG_ELF (1 << 0)
+
 #define AEHNELN_PAGESIZE 4096
 #define AEHNELN_PAGEOFFSET 12
 #define AEHNELN_LEVELS 3
@@ -74,11 +76,11 @@ struct sim_ctx {
 	uint64_t generic_cause; /* generic cause. Holds exception cause before
 				 * delegation logic causes it to be written to mcause or
 				 * scause */
-	uint64_t generic_tval;  /* generic trap value to be mapped into stval or mtval */
+	uint64_t generic_tval;	/* generic trap value to be mapped into stval or mtval */
 
 	bool bus_exception; /* memory bus generated access exception */
 
-	bool reserved;		/* single reservation station for lr/sc. This could be optimized. */
+	bool reserved; /* single reservation station for lr/sc. This could be optimized. */
 	uint64_t reserved_addr;
 };
 
@@ -90,7 +92,10 @@ struct mem_ctx {
 
 void asim(struct sim_ctx *sim, struct mem_ctx *mem);
 
+void load_elf(struct mem_ctx *mem, char *name);
 int mem_ctx_init(struct mem_ctx *mem, int c);
+int mem_ctx_copy_bin(struct mem_ctx *mem, char *bin, uint64_t base, uint64_t size);
+int mem_ctx_set(struct mem_ctx *mem, int c, uint64_t base, uint64_t size);
 
 uint32_t mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr);
 uint64_t mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr);

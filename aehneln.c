@@ -5,8 +5,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <gelf.h>
 #include <getopt.h>
 #include <inttypes.h>
+#include <libelf.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -17,11 +19,27 @@
 #include "aehneln.h"
 #include "config.h"
 
-#define handle_error(msg)           \
+#define aehneln_perror(msg)         \
 	do {                        \
 		perror(msg);        \
 		exit(EXIT_FAILURE); \
 	} while (0)
+
+int debug = 0;
+
+static void
+aehneln_elf_error()
+{
+	(void)fprintf(stderr, "%s\n", elf_errmsg(elf_errno()));
+	exit(EXIT_FAILURE);
+}
+
+static void
+aehneln_error(const char *msg)
+{
+	(void)fprintf(stderr, "%s\n", msg);
+	exit(EXIT_FAILURE);
+}
 
 void
 print_usage(void)
@@ -29,8 +47,39 @@ print_usage(void)
 	printf("Usage: " PACKAGE " RISCV-ELF\n");
 }
 
+__attribute__((unused)) void
+hexdump(const void *data, size_t size)
+{
+	char ascii[17];
+	size_t i, j;
+	ascii[16] = '\0';
+	for (i = 0; i < size; ++i) {
+		printf("%02X ", ((unsigned char *)data)[i]);
+		if (((unsigned char *)data)[i] >= ' ' && ((unsigned char *)data)[i] <= '~') {
+			ascii[i % 16] = ((unsigned char *)data)[i];
+		} else {
+			ascii[i % 16] = '.';
+		}
+		if ((i + 1) % 8 == 0 || i + 1 == size) {
+			printf(" ");
+			if ((i + 1) % 16 == 0) {
+				printf("|  %s \n", ascii);
+			} else if (i + 1 == size) {
+				ascii[(i + 1) % 16] = '\0';
+				if ((i + 1) % 16 <= 8) {
+					printf(" ");
+				}
+				for (j = (i + 1) % 16; j < 16; ++j) {
+					printf("   ");
+				}
+				printf("|  %s \n", ascii);
+			}
+		}
+	}
+}
+
 /* map binary file into host system memory */
-void
+static void
 map_binary(struct bin *bin, char *name)
 {
 	struct stat sb = { 0 };
@@ -40,18 +89,131 @@ map_binary(struct bin *bin, char *name)
 	/* mmap bin file into memory */
 	int fd = open(name, O_RDONLY);
 	if (fd == -1)
-		handle_error("open");
+		aehneln_perror("open");
 
 	if (fstat(fd, &sb) == -1)
-		handle_error("fstat");
+		aehneln_perror("fstat");
 
 	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, pa_offset);
 	if (addr == MAP_FAILED)
-		handle_error("mmap");
+		aehneln_perror("mmap");
 
 	close(fd);
 	bin->bytes = addr;
 	bin->size = sb.st_size;
+}
+
+void
+load_bin(struct mem_ctx *mem, char *name)
+{
+	int err;
+	struct bin bin = { 0 };
+
+	map_binary(&bin, name);
+
+	err = mem_ctx_copy_bin(mem, bin.bytes, MEM_RAM_BASE, bin.size);
+	if (err)
+		aehneln_error("mem_ctx_copy_bin\n");
+}
+
+void
+load_elf(struct mem_ctx *mem, char *name)
+{
+	Elf64_Shdr *shdr;
+	Elf64_Ehdr *ehdr;
+	Elf *elf;
+	Elf_Scn *scn;
+	Elf_Data *data;
+	unsigned int cnt;
+	int fd;
+
+	if ((fd = open(name, O_RDONLY)) == -1)
+		aehneln_perror("open");
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		aehneln_elf_error();
+
+	if ((elf = elf_begin(fd, ELF_C_READ, NULL)) == NULL)
+		aehneln_elf_error();
+
+	/* find loadable segments and load them into mem */
+	size_t n;
+	Elf64_Phdr *phdr;
+	if (elf_getphdrnum(elf, &n) != 0)
+		aehneln_elf_error();
+
+	if ((phdr = elf64_getphdr(elf)) == NULL)
+		aehneln_elf_error();
+
+	for (size_t i = 0; i < n; i++) {
+		if (debug & AEHNELN_DEBUG_ELF) {
+			printf("PHDR %ld (%p):\n", i, &phdr[i]);
+			printf("p_type   = %d\n", phdr[i].p_type);
+			printf("p_offset = 0x%lx\n", phdr[i].p_offset);
+			printf("p_vaddr  = 0x%lx\n", phdr[i].p_vaddr);
+			printf("p_paddr  = 0x%lx\n", phdr[i].p_paddr);
+			printf("p_filesz = 0x%lx\n", phdr[i].p_filesz);
+			printf("p_memsz  = 0x%lx\n", phdr[i].p_memsz);
+			printf("p_flags  = 0x%x [", phdr[i].p_flags);
+			if (phdr[i].p_flags & PF_R)
+				printf("r");
+			if (phdr[i].p_flags & PF_W)
+				printf("w");
+			if (phdr[i].p_flags & PF_X)
+				printf("x");
+			printf("]\n");
+			printf("p_align  = 0x%lx\n", phdr[i].p_align);
+		}
+
+		size_t elf_bytes;
+		char *raw;
+		if ((raw = elf_rawfile(elf, &elf_bytes)) == NULL)
+			aehneln_elf_error();
+
+		if (phdr[i].p_offset + phdr[i].p_filesz >= elf_bytes)
+			aehneln_error("phdr out of range");
+
+		if (phdr[i].p_type == PT_LOAD) {
+			int ret = mem_ctx_copy_bin(mem, raw + phdr[i].p_offset, phdr[i].p_paddr,
+			    phdr[i].p_filesz);
+			if (ret != 0)
+				aehneln_error("mem_ctx_copy_bin");
+
+			if (debug & AEHNELN_DEBUG_ELF)
+				hexdump(raw + phdr[i].p_offset, phdr[i].p_filesz);
+
+			/* zero fill trailing bytes */
+			if (phdr[i].p_filesz < phdr[i].p_memsz)
+				mem_ctx_set(mem, 0, phdr[i].p_paddr + phdr[i].p_filesz,
+				    phdr[i].p_memsz - phdr[i].p_filesz);
+		}
+	}
+
+	size_t shstrndx;
+	if (elf_getshdrstrndx(elf, &shstrndx) != 0)
+		aehneln_elf_error();
+
+	if ((ehdr = elf64_getehdr(elf)) == NULL)
+		aehneln_elf_error();
+
+	if (((scn = elf_getscn(elf, ehdr->e_shstrndx)) == NULL))
+		aehneln_elf_error();
+
+	if (((data = elf_getdata(scn, NULL)) == NULL))
+		aehneln_elf_error();
+
+	/* traverse input filename, printing each section */
+	for (cnt = 1, scn = NULL; (scn = elf_nextscn(elf, scn)); cnt++) {
+		if ((shdr = elf64_getshdr(scn)) == NULL)
+			aehneln_elf_error();
+
+		if (debug & AEHNELN_DEBUG_ELF)
+			(void)printf("[%d]	  %s\n", cnt, (char *)data->d_buf + shdr->sh_name);
+	}
+
+	elf_end(elf);
+
+	close(fd);
 }
 
 int
@@ -91,7 +253,22 @@ mem_ctx_copy_bin(struct mem_ctx *mem, char *bin, uint64_t base, uint64_t size)
 	if (base + size >= mem->ram_phys_base + mem->ram_phys_size)
 		return 1;
 
-	memcpy(mem->ram, bin, size);
+	memcpy(mem->ram + (base - mem->ram_phys_base), bin, size);
+
+	return 0;
+}
+
+int
+mem_ctx_set(struct mem_ctx *mem, int c, uint64_t base, uint64_t size)
+{
+	assert(mem);
+
+	if (base < mem->ram_phys_base)
+		return 1;
+	if (base + size >= mem->ram_phys_base + mem->ram_phys_size)
+		return 1;
+
+	memset(mem->ram + (base - mem->ram_phys_base), c, size);
 
 	return 0;
 }
@@ -456,8 +633,9 @@ mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 	uint64_t data;
 	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 8);
 
-	if (sim->trace & AEHNELN_TRACE_MEM)
-		fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n", __func__, addr, data);
+	/* if (sim->trace & AEHNELN_TRACE_MEM) */
+	/* 	fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n", __func__, addr, data);
+	 */
 
 	return data;
 }
@@ -2186,14 +2364,17 @@ main(int argc, char *argv[])
 	int c;
 	int trace = false;
 	bool poison = false;
+	bool raw_binary = false;
 
 	while (1) {
 		__attribute__((unused)) int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 		static struct option long_options[] = {
 			{ "poison-mem", no_argument, 0, 'p' },
-			{ "trace", no_argument, 0, 'd' },
+			{ "raw", no_argument, 0, 'r' },
+			{ "trace", no_argument, 0, 't' },
 			{ "trace-vm", no_argument, 0, 'k' },
+			{ "debug", no_argument, 0, 'd' },
 			{ "help", no_argument, 0, 'h' },
 		};
 
@@ -2209,7 +2390,15 @@ main(int argc, char *argv[])
 			poison = true;
 			break;
 
+		case 'r':
+			raw_binary = true;
+			break;
+
 		case 'd':
+			debug |= AEHNELN_DEBUG_ELF;
+			break;
+
+		case 't':
 			trace |= AEHNELN_TRACE_INSN;
 			trace |= AEHNELN_TRACE_MEM;
 			trace |= AEHNELN_TRACE_ILLEGAL;
@@ -2231,10 +2420,10 @@ main(int argc, char *argv[])
 		}
 	}
 
-	char *bin_name = NULL;
+	char *name = NULL;
 	if (argc - optind == 1) {
 		printf("opening %s ...\n", argv[optind]);
-		bin_name = argv[optind];
+		name = argv[optind];
 	} else if (argc - optind >= 1) {
 		fprintf(stderr, "too many arguments\n");
 		print_usage();
@@ -2245,12 +2434,8 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	/* load bin */
-	struct bin bin = { 0 };
-	map_binary(&bin, bin_name);
-
-	int err;
 	struct mem_ctx mem = { 0 };
+	int err;
 
 	/* initialize physical memory */
 	err = mem_ctx_init(&mem, poison ? 0xde : 0x00);
@@ -2259,12 +2444,11 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	err = mem_ctx_copy_bin(&mem, bin.bytes, MEM_RAM_BASE, bin.size);
-
-	if (err) {
-		fprintf(stderr, "mem_ctx_copy_bin()\n");
-		return EXIT_FAILURE;
-	}
+	/* load raw bin or elf */
+	if (raw_binary)
+		load_bin(&mem, name);
+	else
+		load_elf(&mem, name);
 
 	/* initialize and start sim */
 	struct sim_ctx sim = { 0 };
