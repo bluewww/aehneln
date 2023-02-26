@@ -1498,35 +1498,35 @@ void
 sim_lb(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = SEXT(mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 8);
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lbu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread8(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
 sim_ld(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lh(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = SEXT(mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 16);
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lhu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread16(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
@@ -1538,7 +1538,7 @@ sim_lr_d(struct sim_ctx *sim, struct mem_ctx *mem)
 	}
 
 	uint64_t val = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS)) {
+	if (!sim->is_exception) {
 		REG(FIELD(RD)) = val;
 		sim->reserved = true;
 		sim->reserved_addr = GET_REG(FIELD(RS1));
@@ -1553,7 +1553,7 @@ sim_lr_w(struct sim_ctx *sim, struct mem_ctx *mem)
 	}
 
 	uint64_t val = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS)) {
+	if (!sim->is_exception) {
 		REG(FIELD(RD)) = val;
 		sim->reserved = true;
 		sim->reserved_addr = GET_REG(FIELD(RS1));
@@ -1570,14 +1570,14 @@ void
 sim_lw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)), 32);
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
 sim_lwu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	uint64_t val = mem_vread32(sim, mem, GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn));
-	if (!(sim->is_exception && sim->generic_cause == CAUSE_LOAD_ACCESS))
+	if (!sim->is_exception)
 		REG(FIELD(RD)) = val;
 }
 void
