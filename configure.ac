@@ -6,4 +6,5 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
  Makefile
 ])
+PKG_CHECK_MODULES([LIBELF], [libelf])
 AC_OUTPUT

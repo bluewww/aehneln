@@ -2,6 +2,8 @@
 dist_doc_DATA = README.md
 bin_PROGRAMS = aehneln
 aehneln_SOURCES = aehneln.c aehneln.h encoding.out.h
+aehneln_LDFLAGS = @LIBELF_CFLAGS@
+aehneln_LDADD = @LIBELF_LIBS@
 AM_CFLAGS = -std=gnu11 -Wall -Wextra
 
 tests/bin/%.bin: tests/riscv/target/share/riscv-tests/isa/%
