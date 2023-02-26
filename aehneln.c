@@ -697,12 +697,28 @@ void
 sim_amoadd_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) + GET_REG(FIELD(RS2)));
 }
 void
 sim_amoadd_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) + GET_REG(FIELD(RS2)));
 }
 
@@ -710,18 +726,42 @@ void
 sim_amoand_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) & GET_REG(FIELD(RS2)));
 }
 void
 sim_amoand_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) & GET_REG(FIELD(RS2)));
 }
 void
 sim_amomax_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)),
 	    MAX((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
@@ -729,6 +769,14 @@ void
 sim_amomax_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)),
 	    MAX((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
@@ -736,18 +784,42 @@ void
 sim_amomaxu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), MAX(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amomaxu_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), MAX(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amomin_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)),
 	    MIN((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
@@ -755,6 +827,14 @@ void
 sim_amomin_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)),
 	    MIN((int64_t)GET_REG(FIELD(RS2)), (int64_t)GET_REG(FIELD(RD))));
 }
@@ -762,48 +842,112 @@ void
 sim_amominu_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), MIN(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amominu_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), MIN(GET_REG(FIELD(RS2)), GET_REG(FIELD(RD))));
 }
 void
 sim_amoor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) | GET_REG(FIELD(RS2)));
 }
 void
 sim_amoor_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) | GET_REG(FIELD(RS2)));
 }
 void
 sim_amoswap_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RS2)));
 }
 void
 sim_amoswap_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RS2)));
 }
 void
 sim_amoxor_d(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = mem_vread64(sim, mem, GET_REG(FIELD(RS1)));
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite64(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) ^ GET_REG(FIELD(RS2)));
 }
 void
 sim_amoxor_w(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	REG(FIELD(RD)) = SEXT(mem_vread32(sim, mem, GET_REG(FIELD(RS1))), 32);
+	if (sim->is_exception) {
+		/* AMOs only generate store page-fault exceptions (privileged
+		 * spec 4.3.1). Rewrite them. */
+		if (sim->generic_cause == CAUSE_LOAD_PAGE_FAULT)
+			sim->generic_cause = CAUSE_STORE_PAGE_FAULT;
+		return;
+	}
+
 	mem_vwrite32(sim, mem, GET_REG(FIELD(RS1)), GET_REG(FIELD(RD)) ^ GET_REG(FIELD(RS2)));
 }
 void
