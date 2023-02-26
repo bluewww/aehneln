@@ -1947,12 +1947,13 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 		/* TODO: inefficient decoding */
 #include "encoding.out.h"
 		else {
-			fprintf(stderr,
-			    "oops illegal instruction pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n",
-			    sim->pc, insn);
-			/* TODO: make this a real illegal instruction instead of stopping simulation
-			 */
-			exit(EXIT_FAILURE);
+
+			if (sim->trace & AEHNELN_TRACE_ILLEGAL)
+				fprintf(stderr,
+				    "oops illegal instruction pc=0x%016" PRIx64 " insn=0x%08" PRIx32
+				    "\n",
+				    sim->pc, insn);
+			exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		}
 #undef DECLARE_INSN
 
