@@ -8,7 +8,7 @@
 #define CORE0_HARTID 0
 
 #define MEM_RAM_BASE 0x80000000
-#define MEM_TOHOST 0x80001000
+#define MEM_TOHOST_DEFAULT_BASE 0x80001000
 
 struct bin {
 	char *bytes;
@@ -88,6 +88,8 @@ struct mem_ctx {
 	char *ram; /* read/write ram */
 	uint64_t ram_phys_base;
 	uint64_t ram_phys_size;
+
+	uint64_t tohost_base; /* tohost addr */
 };
 
 void asim(struct sim_ctx *sim, struct mem_ctx *mem);

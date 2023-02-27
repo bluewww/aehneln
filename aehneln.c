@@ -209,6 +209,13 @@ load_elf(struct mem_ctx *mem, char *name)
 
 		if (debug & AEHNELN_DEBUG_ELF)
 			(void)printf("[%d]	  %s\n", cnt, (char *)data->d_buf + shdr->sh_name);
+
+		/* find tohost addr */
+		if (!strcmp((char *)data->d_buf + shdr->sh_name, ".tohost")) {
+			mem->tohost_base = shdr->sh_addr;
+			if (debug & AEHNELN_DEBUG_ELF)
+				printf("tohost_base=0x%016lx\n", shdr->sh_addr);
+		}
 	}
 
 	elf_end(elf);
@@ -719,7 +726,7 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 		return;
 	}
 
-	if (addr == MEM_TOHOST) {
+	if (addr == mem->tohost_base) {
 		decode_tohost(data);
 		return;
 	}
@@ -741,7 +748,7 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 		return;
 	}
 
-	if (addr == MEM_TOHOST) {
+	if (addr == mem->tohost_base) {
 		decode_tohost(data);
 		return;
 	}
@@ -763,7 +770,7 @@ mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t da
 		return;
 	}
 
-	if (addr == MEM_TOHOST) {
+	if (addr == mem->tohost_base) {
 		decode_tohost(data);
 		return;
 	}
@@ -786,7 +793,7 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 		return;
 	}
 
-	if (addr == MEM_TOHOST) {
+	if (addr == mem->tohost_base) {
 		decode_tohost(data);
 		return;
 	}
@@ -2444,7 +2451,10 @@ main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	/* load raw bin or elf */
+	/* initialize mem map */
+	mem.tohost_base = MEM_TOHOST_DEFAULT_BASE;
+
+	/* load raw bin or elf potentially updates tohost_base */
 	if (raw_binary)
 		load_bin(&mem, name);
 	else
