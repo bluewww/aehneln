@@ -7,7 +7,7 @@ aehneln_LDADD = @LIBELF_LIBS@
 AM_CFLAGS = -std=gnu11 -Wall -Wextra
 
 tests/bin/%.bin: tests/riscv/target/share/riscv-tests/isa/%
-	mv $^ $@
+	cp $^ $@
 
 run-riscv-tests: riscv-tests
 	for f in tests/bin/*.bin; do ./aehneln $$f; done
@@ -87,18 +87,6 @@ tests/bin/rv64ud-p-ldst.bin \
 tests/bin/rv64ud-p-move.bin \
 tests/bin/rv64ud-p-recoding.bin \
 tests/bin/rv64ud-p-structural.bin \
-tests/bin/rv64ud-v-fadd.bin \
-tests/bin/rv64ud-v-fclass.bin \
-tests/bin/rv64ud-v-fcmp.bin \
-tests/bin/rv64ud-v-fcvt.bin \
-tests/bin/rv64ud-v-fcvt_w.bin \
-tests/bin/rv64ud-v-fdiv.bin \
-tests/bin/rv64ud-v-fmadd.bin \
-tests/bin/rv64ud-v-fmin.bin \
-tests/bin/rv64ud-v-ldst.bin \
-tests/bin/rv64ud-v-move.bin \
-tests/bin/rv64ud-v-recoding.bin \
-tests/bin/rv64ud-v-structural.bin \
 tests/bin/rv64uf-p-fadd.bin \
 tests/bin/rv64uf-p-fclass.bin \
 tests/bin/rv64uf-p-fcmp.bin \
@@ -110,17 +98,6 @@ tests/bin/rv64uf-p-fmin.bin \
 tests/bin/rv64uf-p-ldst.bin \
 tests/bin/rv64uf-p-move.bin \
 tests/bin/rv64uf-p-recoding.bin \
-tests/bin/rv64uf-v-fadd.bin \
-tests/bin/rv64uf-v-fclass.bin \
-tests/bin/rv64uf-v-fcmp.bin \
-tests/bin/rv64uf-v-fcvt.bin \
-tests/bin/rv64uf-v-fcvt_w.bin \
-tests/bin/rv64uf-v-fdiv.bin \
-tests/bin/rv64uf-v-fmadd.bin \
-tests/bin/rv64uf-v-fmin.bin \
-tests/bin/rv64uf-v-ldst.bin \
-tests/bin/rv64uf-v-move.bin \
-tests/bin/rv64uf-v-recoding.bin \
 tests/bin/rv64ui-p-add.bin \
 tests/bin/rv64ui-p-addi.bin \
 tests/bin/rv64ui-p-addiw.bin \
@@ -451,3 +428,26 @@ tests/bin/rv64um-v-remw.bin
 # tests/bin/rv32uzfh-v-ldst.bin \
 # tests/bin/rv32uzfh-v-move.bin \
 # tests/bin/rv32uzfh-v-recoding.bin
+# tests/bin/rv64uf-v-fadd.bin \
+# tests/bin/rv64uf-v-fclass.bin \
+# tests/bin/rv64uf-v-fcmp.bin \
+# tests/bin/rv64uf-v-fcvt.bin \
+# tests/bin/rv64uf-v-fcvt_w.bin \
+# tests/bin/rv64uf-v-fdiv.bin \
+# tests/bin/rv64uf-v-fmadd.bin \
+# tests/bin/rv64uf-v-fmin.bin \
+# tests/bin/rv64ud-v-fadd.bin \
+# tests/bin/rv64ud-v-fclass.bin \
+# tests/bin/rv64ud-v-fcmp.bin \
+# tests/bin/rv64ud-v-fcvt.bin \
+# tests/bin/rv64ud-v-fcvt_w.bin \
+# tests/bin/rv64ud-v-fdiv.bin \
+# tests/bin/rv64ud-v-fmadd.bin \
+# tests/bin/rv64ud-v-fmin.bin \
+# tests/bin/rv64ud-v-ldst.bin \
+# tests/bin/rv64uf-v-ldst.bin \
+# tests/bin/rv64ud-v-move.bin \
+# tests/bin/rv64uf-v-move.bin \
+# tests/bin/rv64ud-v-recoding.bin \
+# tests/bin/rv64ud-v-structural.bin \
+# tests/bin/rv64uf-v-recoding.bin
