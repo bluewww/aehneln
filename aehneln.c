@@ -1819,9 +1819,10 @@ void
 sim_jalr(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	REG(FIELD(RD)) = sim->pc + 4;
+	/* in case rs1=rd: we need to make sure to read rs1 first */
 	sim->pc_next = GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn);
 	sim->pc_next &= ~1;
+	REG(FIELD(RD)) = sim->pc + 4;
 }
 void
 sim_lb(struct sim_ctx *sim, struct mem_ctx *mem)
