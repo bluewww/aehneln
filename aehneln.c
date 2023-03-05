@@ -1324,8 +1324,12 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 		/* supervisor mode */
 	case CSR_SATP:
-		REG(FIELD(RD)) = sim->satp;
-		sim->satp &= ~csr_arg;
+		if (CSR_FIELD_READ(sim->mstatus, MSTATUS_TVM)) {
+			exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
+		} else {
+			REG(FIELD(RD)) = sim->satp;
+			sim->satp &= ~csr_arg;
+		}
 		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
@@ -1473,8 +1477,12 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 		/* supervisor mode */
 	case CSR_SATP:
-		REG(FIELD(RD)) = sim->satp;
-		sim->satp |= csr_arg;
+		if (CSR_FIELD_READ(sim->mstatus, MSTATUS_TVM)) {
+			exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
+		} else {
+			REG(FIELD(RD)) = sim->satp;
+			sim->satp |= csr_arg;
+		}
 		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
@@ -1619,8 +1627,12 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		break;
 		/* supervisor mode */
 	case CSR_SATP:
-		REG(FIELD(RD)) = sim->satp;
-		sim->satp = csr_arg;
+		if (CSR_FIELD_READ(sim->mstatus, MSTATUS_TVM)) {
+			exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
+		} else {
+			REG(FIELD(RD)) = sim->satp;
+			sim->satp = csr_arg;
+		}
 		break;
 	case CSR_SSTATUS:
 		REG(FIELD(RD)) = READ_ZEROD_BITS(sim->mstatus, SSTATUS_RMASK);
@@ -2059,10 +2071,11 @@ sim_sd(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_sfence_vma(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	(void)sim;
 	(void)mem;
 	/* since we walk the full page table on each access our sfence is just a
 	 * nop (there is no translation cache) */
+	if (CSR_FIELD_READ(sim->mstatus, MSTATUS_TVM))
+		exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 }
 void
 sim_sh(struct sim_ctx *sim, struct mem_ctx *mem)
