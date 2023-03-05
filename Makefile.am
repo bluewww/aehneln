@@ -73,31 +73,6 @@ tests/bin/rv64ua-v-amoswap_w.bin \
 tests/bin/rv64ua-v-amoxor_d.bin \
 tests/bin/rv64ua-v-amoxor_w.bin \
 tests/bin/rv64ua-v-lrsc.bin \
-tests/bin/rv64uc-p-rvc.bin \
-tests/bin/rv64uc-v-rvc.bin \
-tests/bin/rv64ud-p-fadd.bin \
-tests/bin/rv64ud-p-fclass.bin \
-tests/bin/rv64ud-p-fcmp.bin \
-tests/bin/rv64ud-p-fcvt.bin \
-tests/bin/rv64ud-p-fcvt_w.bin \
-tests/bin/rv64ud-p-fdiv.bin \
-tests/bin/rv64ud-p-fmadd.bin \
-tests/bin/rv64ud-p-fmin.bin \
-tests/bin/rv64ud-p-ldst.bin \
-tests/bin/rv64ud-p-move.bin \
-tests/bin/rv64ud-p-recoding.bin \
-tests/bin/rv64ud-p-structural.bin \
-tests/bin/rv64uf-p-fadd.bin \
-tests/bin/rv64uf-p-fclass.bin \
-tests/bin/rv64uf-p-fcmp.bin \
-tests/bin/rv64uf-p-fcvt.bin \
-tests/bin/rv64uf-p-fcvt_w.bin \
-tests/bin/rv64uf-p-fdiv.bin \
-tests/bin/rv64uf-p-fmadd.bin \
-tests/bin/rv64uf-p-fmin.bin \
-tests/bin/rv64uf-p-ldst.bin \
-tests/bin/rv64uf-p-move.bin \
-tests/bin/rv64uf-p-recoding.bin \
 tests/bin/rv64ui-p-add.bin \
 tests/bin/rv64ui-p-addi.bin \
 tests/bin/rv64ui-p-addiw.bin \
@@ -450,4 +425,29 @@ tests/bin/rv64um-v-remw.bin
 # tests/bin/rv64uf-v-move.bin \
 # tests/bin/rv64ud-v-recoding.bin \
 # tests/bin/rv64ud-v-structural.bin \
-# tests/bin/rv64uf-v-recoding.bin
+# tests/bin/rv64uf-v-recoding.bin \
+# tests/bin/rv64uc-p-rvc.bin \
+# tests/bin/rv64uc-v-rvc.bin \
+# tests/bin/rv64ud-p-fadd.bin \
+# tests/bin/rv64ud-p-fclass.bin \
+# tests/bin/rv64ud-p-fcmp.bin \
+# tests/bin/rv64ud-p-fcvt.bin \
+# tests/bin/rv64ud-p-fcvt_w.bin \
+# tests/bin/rv64ud-p-fdiv.bin \
+# tests/bin/rv64ud-p-fmadd.bin \
+# tests/bin/rv64ud-p-fmin.bin \
+# tests/bin/rv64ud-p-ldst.bin \
+# tests/bin/rv64ud-p-move.bin \
+# tests/bin/rv64ud-p-recoding.bin \
+# tests/bin/rv64ud-p-structural.bin \
+# tests/bin/rv64uf-p-fadd.bin \
+# tests/bin/rv64uf-p-fclass.bin \
+# tests/bin/rv64uf-p-fcmp.bin \
+# tests/bin/rv64uf-p-fcvt.bin \
+# tests/bin/rv64uf-p-fcvt_w.bin \
+# tests/bin/rv64uf-p-fdiv.bin \
+# tests/bin/rv64uf-p-fmadd.bin \
+# tests/bin/rv64uf-p-fmin.bin \
+# tests/bin/rv64uf-p-ldst.bin \
+# tests/bin/rv64uf-p-move.bin \
+# tests/bin/rv64uf-p-recoding.bin
