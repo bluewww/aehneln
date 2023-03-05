@@ -608,8 +608,8 @@ mem_vwrite8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint8_t da
 	}
 }
 
-uint32_t
-mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
+static inline uint64_t
+mem_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, int bytes)
 {
 	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
 		if (sim->trace & AEHNELN_TRACE_MEM)
@@ -617,9 +617,17 @@ mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 		sim->bus_exception = true;
 		return 0xdeadbeef;
 	}
-	uint32_t data;
-	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 4);
 
+	uint64_t data;
+	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], bytes);
+	return data;
+}
+
+uint32_t
+mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
+{
+
+	uint32_t data = mem_read(sim, mem, addr, 4);
 	/* if (sim->trace & AEHNELN_TRACE_MEM) */
 	/* 	fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%08" PRIx32 "\n", __func__, addr, data);
 	 */
@@ -630,16 +638,8 @@ mem_insn_read(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint64_t
 mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->bus_exception = true;
-		return 0xdeadbeef;
-	}
 
-	uint64_t data;
-	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 8);
-
+	uint64_t data = mem_read(sim, mem, addr, 8);
 	/* if (sim->trace & AEHNELN_TRACE_MEM) */
 	/* 	fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%016" PRIx64 "\n", __func__, addr, data);
 	 */
@@ -650,14 +650,7 @@ mem_read64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint32_t
 mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->bus_exception = true;
-		return 0xdeadbeef;
-	}
-	uint32_t data;
-	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 4);
+	uint32_t data = mem_read(sim, mem, addr, 4);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%08" PRIx32 "\n", __func__, addr, data);
@@ -668,14 +661,7 @@ mem_read32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint16_t
 mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->bus_exception = true;
-		return 0xbeef;
-	}
-	uint16_t data;
-	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 2);
+	uint16_t data = mem_read(sim, mem, addr, 2);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%04" PRIx16 "\n", __func__, addr, data);
@@ -686,13 +672,7 @@ mem_read16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 uint8_t
 mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal read at 0x%016" PRIx64 "\n", addr);
-		sim->bus_exception = true;
-		return 0xff;
-	}
-	uint8_t data;
+	uint8_t data = mem_read(sim, mem, addr, 1);
 	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 1);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
@@ -715,23 +695,29 @@ decode_tohost(uint64_t data)
 	}
 }
 
+static inline void
+mem_write(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t data, int bytes)
+{
+	if (addr == mem->tohost_base) {
+		/* to host protocol needs to come first because of aliasing */
+		decode_tohost(data);
+		return;
+	} else if (addr >= mem->ram_phys_base && addr < mem->ram_phys_base + mem->ram_phys_size) {
+		memcpy(&mem->ram[addr - mem->ram_phys_base], &data, bytes);
+		return;
+	}
+
+	if (sim->trace & AEHNELN_TRACE_MEM)
+		fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n", addr,
+		    data);
+	sim->bus_exception = true;
+	return;
+}
+
 void
 mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t data)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%016" PRIx64 "\n",
-			    addr, data);
-		sim->bus_exception = true;
-		return;
-	}
-
-	if (addr == mem->tohost_base) {
-		decode_tohost(data);
-		return;
-	}
-
-	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 8);
+	mem_write(sim, mem, addr, data, 8);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " <- 0x%016" PRIx64 "\n", __func__, addr, data);
@@ -740,20 +726,7 @@ mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64_t da
 void
 mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t data)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%08" PRIx32 "\n",
-			    addr, data);
-		sim->bus_exception = true;
-		return;
-	}
-
-	if (addr == mem->tohost_base) {
-		decode_tohost(data);
-		return;
-	}
-
-	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 4);
+	mem_write(sim, mem, addr, data, 4);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " <- 0x%08" PRIx32 "\n", __func__, addr, data);
@@ -762,20 +735,7 @@ mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t da
 void
 mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t data)
 {
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%04" PRIx16 "\n",
-			    addr, data);
-		sim->bus_exception = true;
-		return;
-	}
-
-	if (addr == mem->tohost_base) {
-		decode_tohost(data);
-		return;
-	}
-
-	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 2);
+	mem_write(sim, mem, addr, data, 2);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " <- 0x%04" PRIx16 "\n", __func__, addr, data);
@@ -784,21 +744,7 @@ mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t da
 void
 mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data)
 {
-	/* TODO: I/O devices */
-	if (addr < mem->ram_phys_base || addr >= mem->ram_phys_base + mem->ram_phys_size) {
-		if (sim->trace & AEHNELN_TRACE_MEM)
-			fprintf(stderr, "illegal write to 0x%016" PRIx64 " with 0x%02" PRIx8 "\n",
-			    addr, data);
-		sim->bus_exception = true;
-		return;
-	}
-
-	if (addr == mem->tohost_base) {
-		decode_tohost(data);
-		return;
-	}
-
-	memcpy(&mem->ram[addr - mem->ram_phys_base], &data, 1);
+	mem_write(sim, mem, addr, data, 1);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " <- 0x%02" PRIx8 "\n", __func__, addr, data);
