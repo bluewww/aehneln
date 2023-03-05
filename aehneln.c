@@ -1157,43 +1157,85 @@ void
 sim_beq(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if (GET_REG(FIELD(RS1)) == GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if (GET_REG(FIELD(RS1)) == GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_bge(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if ((int64_t)GET_REG(FIELD(RS1)) >= (int64_t)GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if ((int64_t)GET_REG(FIELD(RS1)) >= (int64_t)GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_bgeu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if (GET_REG(FIELD(RS1)) >= GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if (GET_REG(FIELD(RS1)) >= GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_blt(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if ((int64_t)GET_REG(FIELD(RS1)) < (int64_t)GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if ((int64_t)GET_REG(FIELD(RS1)) < (int64_t)GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_bltu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if (GET_REG(FIELD(RS1)) < GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if (GET_REG(FIELD(RS1)) < GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_bne(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
-	if (GET_REG(FIELD(RS1)) != GET_REG(FIELD(RS2)))
-		sim->pc_next = sim->pc + BTYPE_IMM(sim->insn);
+	uint64_t target = sim->pc + BTYPE_IMM(sim->insn);
+	if (GET_REG(FIELD(RS1)) != GET_REG(FIELD(RS2))) {
+		if (target & 3) {
+			exception(sim, CAUSE_MISALIGNED_FETCH, target);
+			return;
+		}
+
+		sim->pc_next = target;
+	}
 }
 void
 sim_c_addiw(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1860,16 +1902,27 @@ void
 sim_jal(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
+	uint64_t target = sim->pc + JTYPE_IMM(sim->insn);
+	if (target & 3) {
+		exception(sim, CAUSE_MISALIGNED_FETCH, target);
+		return;
+	}
+
+	sim->pc_next = target;
 	REG(FIELD(RD)) = sim->pc + 4;
-	sim->pc_next = sim->pc + JTYPE_IMM(sim->insn);
 }
 void
 sim_jalr(struct sim_ctx *sim, struct mem_ctx *mem)
 {
 	(void)mem;
 	/* in case rs1=rd: we need to make sure to read rs1 first */
-	sim->pc_next = GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn);
-	sim->pc_next &= ~1;
+	uint64_t target = (GET_REG(FIELD(RS1)) + ITYPE_IMM(sim->insn)) & ~1;
+	if (target & 3) {
+		exception(sim, CAUSE_MISALIGNED_FETCH, target);
+		return;
+	}
+
+	sim->pc_next = target;
 	REG(FIELD(RD)) = sim->pc + 4;
 }
 void
