@@ -116,6 +116,8 @@ void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t
 #include "encoding.out.h"
 #undef DECLARE_INSN
 
+#define DIV_OVERFLOW 0x8000000000000000ull
+#define DIV_OVERFLOW32 0x80000000u
 /* access masks */
 #define MCAUSE_MASK 0x80000000000000ff
 #define SCAUSE_MASK 0x80000000000000ff

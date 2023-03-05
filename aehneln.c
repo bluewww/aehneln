@@ -1714,22 +1714,58 @@ sim_csrrwi(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_div(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int64_t rs1 = GET_REG(FIELD(RS1));
+	int64_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs1 == (int64_t)DIV_OVERFLOW && rs2 == -1) {
+		REG(FIELD(RD)) = DIV_OVERFLOW;
+	} else if (rs2 != 0) {
+		REG(FIELD(RD)) = rs1 / rs2;
+	} else {
+		REG(FIELD(RD)) = -1;
+	}
 }
 void
 sim_divu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint64_t rs1 = GET_REG(FIELD(RS1));
+	uint64_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs2 != 0) {
+		REG(FIELD(RD)) = rs1 / rs2;
+	} else {
+		REG(FIELD(RD)) = -1;
+	}
 }
 void
 sim_divuw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint32_t rs1 = GET_REG(FIELD(RS1));
+	uint32_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs2 != 0) {
+		REG(FIELD(RD)) = SEXT(rs1 / rs2, 32);
+	} else {
+		REG(FIELD(RD)) = SEXT(-1, 32);
+	}
 }
 void
 sim_divw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int32_t rs1 = GET_REG(FIELD(RS1));
+	int32_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs1 == (int32_t)DIV_OVERFLOW32 && rs2 == -1) {
+		REG(FIELD(RD)) = SEXT(DIV_OVERFLOW32, 32);
+	} else if (rs2 != 0) {
+		REG(FIELD(RD)) = SEXT(rs1 / rs2, 32);
+	} else {
+		REG(FIELD(RD)) = SEXT(-1, 32);
+	}
 }
 void
 sim_dret(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1954,27 +1990,55 @@ sim_mret(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_mul(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	REG(FIELD(RD)) = GET_REG(FIELD(RS1)) * GET_REG(FIELD(RS2));
 }
 void
 sim_mulh(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int64_t rs1 = GET_REG(FIELD(RS1));
+	int64_t rs2 = GET_REG(FIELD(RS2));
+	int64_t lo_lo = (rs1 & 0xffffffff) * (rs2 & 0xffffffff);
+	int64_t hi_lo = (rs1 >> 32) * (rs2 & 0xffffffff);
+	int64_t lo_hi = (rs1 & 0xffffffff) * (rs2 >> 32);
+	int64_t hi_hi = (rs1 >> 32) * (rs2 >> 32);
+	int64_t cross = (lo_lo >> 32) + (hi_lo & 0xffffffff) + lo_hi;
+	REG(FIELD(RD)) = (hi_lo >> 32) + (cross >> 32) + hi_hi;
 }
 void
 sim_mulhsu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int64_t rs1 = GET_REG(FIELD(RS1));
+	uint64_t rs2 = GET_REG(FIELD(RS2));
+	int64_t lo_lo = (rs1 & 0xffffffff) * (rs2 & 0xffffffff);
+	int64_t hi_lo = (rs1 >> 32) * (rs2 & 0xffffffff);
+	int64_t lo_hi = (rs1 & 0xffffffff) * (rs2 >> 32);
+	int64_t hi_hi = (rs1 >> 32) * (rs2 >> 32);
+	uint64_t cross = (uint64_t)(lo_lo >> 32) + (uint64_t)(hi_lo & 0xffffffff) + (uint64_t)lo_hi;
+	REG(FIELD(RD)) = (hi_lo >> 32) + (cross >> 32) + hi_hi;
 }
 void
 sim_mulhu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint64_t rs1 = GET_REG(FIELD(RS1));
+	uint64_t rs2 = GET_REG(FIELD(RS2));
+	uint64_t lo_lo = (rs1 & 0xffffffff) * (rs2 & 0xffffffff);
+	uint64_t hi_lo = (rs1 >> 32) * (rs2 & 0xffffffff);
+	uint64_t lo_hi = (rs1 & 0xffffffff) * (rs2 >> 32);
+	uint64_t hi_hi = (rs1 >> 32) * (rs2 >> 32);
+	uint64_t cross = (lo_lo >> 32) + (hi_lo & 0xffffffff) + lo_hi;
+	REG(FIELD(RD)) = (hi_lo >> 32) + (cross >> 32) + hi_hi;
 }
 void
 sim_mulw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint32_t rs1 = GET_REG(FIELD(RS1));
+	uint32_t rs2 = GET_REG(FIELD(RS2));
+	REG(FIELD(RD)) = SEXT((uint64_t)(rs1 * rs2), 32);
 }
 void
 sim_or(struct sim_ctx *sim, struct mem_ctx *mem)
@@ -1998,22 +2062,58 @@ sim_pause(struct sim_ctx *sim, struct mem_ctx *mem)
 void
 sim_rem(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int64_t rs1 = GET_REG(FIELD(RS1));
+	int64_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs1 == (int64_t)DIV_OVERFLOW && rs2 == -1) {
+		REG(FIELD(RD)) = 0;
+	} else if (rs2 != 0) {
+		REG(FIELD(RD)) = rs1 % rs2;
+	} else {
+		REG(FIELD(RD)) = rs1;
+	}
 }
 void
 sim_remu(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint64_t rs1 = GET_REG(FIELD(RS1));
+	uint64_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs2 != 0) {
+		REG(FIELD(RD)) = rs1 % rs2;
+	} else {
+		REG(FIELD(RD)) = rs1;
+	}
 }
 void
 sim_remuw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	uint32_t rs1 = GET_REG(FIELD(RS1));
+	uint32_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs2 != 0) {
+		REG(FIELD(RD)) = SEXT(rs1 % rs2, 32);
+	} else {
+		REG(FIELD(RD)) = SEXT(rs1, 32);
+	}
 }
 void
 sim_remw(struct sim_ctx *sim, struct mem_ctx *mem)
 {
-	SIM_UNIMPLEMENTED();
+	(void)mem;
+	int32_t rs1 = GET_REG(FIELD(RS1));
+	int32_t rs2 = GET_REG(FIELD(RS2));
+
+	if (rs1 == (int32_t)DIV_OVERFLOW32 && rs2 == -1) {
+		REG(FIELD(RD)) = 0;
+	} else if (rs2 != 0) {
+		REG(FIELD(RD)) = SEXT(rs1 % rs2, 32);
+	} else {
+		REG(FIELD(RD)) = SEXT(rs1, 32);
+	}
 }
 void
 sim_sb(struct sim_ctx *sim, struct mem_ctx *mem)
