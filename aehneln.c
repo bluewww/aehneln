@@ -1293,7 +1293,7 @@ csrrc_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 		/* bit 11 is read-only zero */
 		REG(FIELD(RD)) = sim->medeleg;
 		sim->medeleg &= ~csr_arg;
-		sim->medeleg &= ~CAUSE_MACHINE_ECALL;
+		sim->medeleg &= ~(1ull << CAUSE_MACHINE_ECALL);
 		break;
 	case CSR_MIDELEG:
 		REG(FIELD(RD)) = sim->mideleg;
@@ -1446,7 +1446,7 @@ csrrs_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
 		sim->medeleg |= csr_arg;
-		sim->medeleg &= ~CAUSE_MACHINE_ECALL;
+		sim->medeleg &= ~(1ull << CAUSE_MACHINE_ECALL);
 		break;
 	case CSR_MIDELEG:
 		REG(FIELD(RD)) = sim->mideleg;
@@ -1596,7 +1596,7 @@ csrrw_generic(struct sim_ctx *sim, int csr_val, uint64_t csr_arg)
 	case CSR_MEDELEG:
 		REG(FIELD(RD)) = sim->medeleg;
 		sim->medeleg = csr_arg;
-		sim->medeleg &= ~CAUSE_MACHINE_ECALL;
+		sim->medeleg &= ~(1ull << CAUSE_MACHINE_ECALL);
 		break;
 	case CSR_MIDELEG:
 		REG(FIELD(RD)) = sim->mideleg;
