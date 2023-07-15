@@ -280,6 +280,21 @@ mem_ctx_set(struct mem_ctx *mem, int c, uint64_t base, uint64_t size)
 	return 0;
 }
 
+static char *
+exception_to_str(long int cause)
+{
+#define DECLARE_CAUSE(CAUSE_STR, CAUSE_INT) \
+	case CAUSE_INT:                     \
+		return CAUSE_STR;
+
+	switch (cause) {
+#include "encoding.out.h"
+	}
+
+	return "cause unknown";
+#undef DECLARE_CAUSE
+}
+
 static void
 exception(struct sim_ctx *sim, uint64_t cause, uint64_t tval)
 {
@@ -2406,8 +2421,10 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 		if (sim->is_exception && sim->priv <= PRV_S &&
 		    ((sim->medeleg >> sim->generic_cause) & 1)) {
 			if (sim->trace & AEHNELN_TRACE_EXCEPTIONS)
-				printf("exception to supervisor mode: %ld tval: 0x%016" PRIx64 "\n",
-				    sim->generic_cause, sim->generic_tval);
+				printf("exception to supervisor mode: %ld (%s) tval: 0x%016" PRIx64
+				       "\n",
+				    sim->generic_cause, exception_to_str(sim->generic_cause),
+				    sim->generic_tval);
 			/* take exception in supervisor mode (riscv-privileged 3.1.8) */
 			int sie = CSR_FIELD_READ(sim->mstatus, SSTATUS_SIE);
 			/* save previous int state */
@@ -2441,7 +2458,8 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 
 		} else if (sim->is_exception) {
 			if (sim->trace & AEHNELN_TRACE_EXCEPTIONS)
-				printf("exception to machine mode: %ld\n", sim->generic_cause);
+				printf("exception to machine mode: %ld (%s)\n", sim->generic_cause,
+				    exception_to_str(sim->generic_cause));
 			/* take exception in machine mode (riscv-privileged 3.1.6.1) */
 			int mie = CSR_FIELD_READ(sim->mstatus, MSTATUS_MIE);
 			/* save previous int state */
