@@ -765,7 +765,7 @@ mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data
 }
 
 void
-printf_machine_state(struct sim_ctx *sim)
+print_machine_state(struct sim_ctx *sim)
 {
 	printf("--------machine state-----------------\n");
 	printf(" pc=0x%016" PRIx64 " ins=0x%08" PRIx32 "\n", sim->pc, sim->insn);
