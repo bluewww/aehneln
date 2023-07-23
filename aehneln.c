@@ -688,7 +688,6 @@ uint8_t
 mem_read8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr)
 {
 	uint8_t data = mem_read(sim, mem, addr, 1);
-	memcpy(&data, &mem->ram[addr - mem->ram_phys_base], 1);
 
 	if (sim->trace & AEHNELN_TRACE_MEM)
 		fprintf(stdout, "%s: 0x%016" PRIx64 " -> 0x%02" PRIx8 "\n", __func__, addr, data);
