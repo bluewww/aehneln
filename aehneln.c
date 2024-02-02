@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: MIT */
+/* SPDX-License-Identifier: MIT
+ * Robert Balas <balasr@iis.ee.ethz.ch
+ */
 #include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <getopt.h>
@@ -18,6 +19,7 @@
 
 #include "aehneln.h"
 #include "config.h"
+#include "gdb.h"
 
 #define aehneln_perror(msg)         \
 	do {                        \
@@ -298,9 +300,16 @@ exception_to_str(long int cause)
 static void
 exception(struct sim_ctx *sim, uint64_t cause, uint64_t tval)
 {
-	sim->is_exception = true;
-	sim->generic_cause = cause;
-	sim->generic_tval = tval;
+	if (sim->gdb_server) {
+		/* if gdb is attached to this simulator, breakpoints directly
+		 * forward control to the gdbserver withouth touch any sim
+		 * state */
+		sim->call_gdb = true;
+	} else {
+		sim->is_exception = true;
+		sim->generic_cause = cause;
+		sim->generic_tval = tval;
+	}
 }
 
 static int
@@ -2390,12 +2399,15 @@ sim_xori(struct sim_ctx *sim, struct mem_ctx *mem)
 #undef REG
 
 void
-asim(struct sim_ctx *sim, struct mem_ctx *mem)
+asim(struct sim_ctx *sim, struct mem_ctx *mem, struct gdb_ctx *gdb)
 {
 	assert(sim);
 	assert(mem);
 
 	for (;;) {
+		while (sim->call_gdb)
+			gdb_call(gdb);
+
 		uint32_t insn = mem_insn_vread(sim, mem, sim->pc);
 		if (sim->trace & AEHNELN_TRACE_INSN)
 			printf("%s: priv=%d pc=0x%016" PRIx64 " insn=0x%08" PRIx32 "\n", __func__,
@@ -2430,6 +2442,14 @@ asim(struct sim_ctx *sim, struct mem_ctx *mem)
 			exception(sim, CAUSE_ILLEGAL_INSTRUCTION, sim->insn);
 		}
 #undef DECLARE_INSN
+
+		/* Special ebreak handling when gdb is attached. We do
+		 * not touch machine state and do not update pc*/
+		if (sim->call_gdb) {
+			sim->pc_next = sim->pc;
+			sim->pc = sim->pc_next;
+			continue;
+		}
 
 		/* update cycle counters */
 		sim->cycle += 1;
@@ -2520,6 +2540,8 @@ main(int argc, char *argv[])
 	int trace = false;
 	bool poison = false;
 	bool raw_binary = false;
+	bool gdb_server = false;
+	bool trace_gdb = false;
 
 	while (1) {
 		__attribute__((unused)) int this_option_optind = optind ? optind : 1;
@@ -2529,6 +2551,8 @@ main(int argc, char *argv[])
 			{ "raw", no_argument, 0, 'r' },
 			{ "trace", no_argument, 0, 't' },
 			{ "trace-vm", no_argument, 0, 'k' },
+			{ "trace-gdb", no_argument, 0, 'b' },
+			{ "gdb", no_argument, 0, 'g' },
 			{ "debug", no_argument, 0, 'd' },
 			{ "help", no_argument, 0, 'h' },
 		};
@@ -2563,6 +2587,14 @@ main(int argc, char *argv[])
 
 		case 'k':
 			trace |= AEHNELN_TRACE_TRANSLATION;
+			break;
+
+		case 'g':
+			gdb_server = true;
+			break;
+
+		case 'b':
+			trace_gdb = true;
 			break;
 
 		case 'h':
@@ -2628,7 +2660,20 @@ main(int argc, char *argv[])
 	sim.marchid = 1;
 	sim.mvendorid = 0; /* non-commercial */
 
-	asim(&sim, &mem);
+	sim.gdb_server = gdb_server;
+
+	struct gdb_ctx gdb = { 0 };
+	gdb.sim = &sim;
+	gdb.mem = &mem;
+	gdb.trace = trace_gdb;
+
+	if (gdb_server) {
+		gdb_spawn_server(&gdb);
+		/* immediately stop for gdb */
+		sim.call_gdb = true;
+	}
+
+	asim(&sim, &mem, &gdb);
 
 	return EXIT_SUCCESS;
 }

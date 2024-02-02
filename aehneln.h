@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "gdb.h"
+
 #define CORE0_HARTID 0
 
 #define MEM_RAM_BASE 0x80000000
@@ -71,6 +73,8 @@ struct sim_ctx {
 	/* other sim state */
 	uint32_t insn;
 	int trace;
+	bool gdb_server;
+	bool call_gdb;
 	uint64_t pc_next;
 	bool is_exception;	/* whether an exception is triggered */
 	uint64_t generic_cause; /* generic cause. Holds exception cause before
@@ -92,7 +96,7 @@ struct mem_ctx {
 	uint64_t tohost_base; /* tohost addr */
 };
 
-void asim(struct sim_ctx *sim, struct mem_ctx *mem);
+void asim(struct sim_ctx *sim, struct mem_ctx *mem, struct gdb_ctx *gdb);
 
 void load_elf(struct mem_ctx *mem, char *name);
 int mem_ctx_init(struct mem_ctx *mem, int c);
@@ -108,6 +112,14 @@ void mem_write64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint64
 void mem_write32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint32_t data);
 void mem_write16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint16_t data);
 void mem_write8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t addr, uint8_t data);
+void mem_vwrite64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint64_t data);
+void mem_vwrite32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint32_t data);
+void mem_vwrite16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint16_t data);
+void mem_vwrite8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr, uint8_t data);
+uint64_t mem_vread64(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr);
+uint32_t mem_vread32(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr);
+uint16_t mem_vread16(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr);
+uint8_t mem_vread8(struct sim_ctx *sim, struct mem_ctx *mem, uint64_t vaddr);
 
 /* all rv64gc_zifencei_zicsr instructions */
 #define __riscv_xlen 64

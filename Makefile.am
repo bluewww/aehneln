@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: MIT
 dist_doc_DATA = README.md
 bin_PROGRAMS = aehneln
-aehneln_SOURCES = aehneln.c aehneln.h encoding.out.h
+aehneln_SOURCES = aehneln.c aehneln.h encoding.out.h gdb.c gdb.h
 aehneln_LDFLAGS = @LIBELF_CFLAGS@
 aehneln_LDADD = @LIBELF_LIBS@
 AM_CFLAGS = -std=gnu11 -Wall -Wextra
+AM_CPPFLAGS = -D_GNU_SOURCE
 
 tests/bin/%.bin: tests/riscv/target/share/riscv-tests/isa/%
 	cp $^ $@
+
+test: run-riscv-tests
 
 run-riscv-tests: riscv-tests
 	for f in tests/bin/*.bin; do ./aehneln $$f; done
