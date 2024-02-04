@@ -3,13 +3,20 @@ Simple RISC-V rv64ima\_zicsr\_zifencei emulator.
 
 The goal is run a minimal Linux distribution but we are still not there yet.
 
-## Setup
+## Setup and Compile
 
 ```
 ./autogen.sh
 ./configure --prefix=$OPTIONAL_PREFIX
 make
 ```
+
+If you want to get started with a debug build you might want to use
+```
+./configure-debug
+```
+
+instead of plain `./configure`.
 
 ## Usage
 
@@ -28,6 +35,7 @@ git submodule update --init --recursive
 cd tests/riscv-tests
 ./configure --prefix=$(readlink -f ../riscv/target)
 make
+# or make RISCV_PREFIX=riscv64-elf-
 make install
 ```
 
